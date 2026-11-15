@@ -27,6 +27,7 @@ export const loginLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  validate: { keyGeneratorIpFallback: false },
   keyGenerator: (req: Request): string => {
     const email = typeof req.body?.email === "string" ? req.body.email.toLowerCase().trim() : "";
     const ip = req.ip || req.socket.remoteAddress || "127.0.0.1";
