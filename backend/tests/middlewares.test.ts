@@ -1,3 +1,4 @@
+import type {} from "../src/types/express.d.ts";
 import type { NextFunction, Request, Response } from "express";
 import { describe, expect, it, type Mock, vi } from "vitest";
 import { z } from "zod";
@@ -83,7 +84,7 @@ describe("sanitizeObject and sanitize middleware", () => {
 
 describe("requestId middleware", () => {
   it("generates a new UUID when X-Request-Id header is missing", () => {
-    const req = { headers: {} } as Request;
+    const req = { headers: {} } as unknown as Request;
     const setHeader = vi.fn();
     const res = { setHeader } as unknown as Response;
     const next = vi.fn() as unknown as NextFunction;
@@ -172,7 +173,7 @@ describe("validate middleware", () => {
 
 describe("notFound middleware", () => {
   it("calls next with 404 ApiError", () => {
-    const req = { method: "GET", originalUrl: "/api/v1/unknown" } as Request;
+    const req = { method: "GET", originalUrl: "/api/v1/unknown" } as unknown as Request;
     const res = {} as Response;
     const next = vi.fn() as unknown as NextFunction;
 
@@ -198,7 +199,7 @@ describe("errorHandler mappings", () => {
 
   it("maps ApiError correctly with statusCode and field errors", () => {
     const { status, json, res } = createMockRes();
-    const req = { id: "req-123", method: "POST", originalUrl: "/api/test" } as Request;
+    const req = { id: "req-123", method: "POST", originalUrl: "/api/test" } as unknown as Request;
     const err = ApiError.badRequest("Invalid request data", [
       { field: "username", message: "Username is taken" },
     ]);
@@ -216,7 +217,7 @@ describe("errorHandler mappings", () => {
 
   it("maps ZodError to 400 with formatted field errors", () => {
     const { status, json, res } = createMockRes();
-    const req = { id: "req-456", method: "POST", originalUrl: "/api/test" } as Request;
+    const req = { id: "req-456", method: "POST", originalUrl: "/api/test" } as unknown as Request;
 
     const schema = z.object({ phone: z.string().min(10) });
     const parseResult = schema.safeParse({ phone: "123" });
@@ -237,7 +238,7 @@ describe("errorHandler mappings", () => {
 
   it("maps Mongoose ValidationError to 400", () => {
     const { status, json, res } = createMockRes();
-    const req = { id: "req-789", method: "POST", originalUrl: "/api/test" } as Request;
+    const req = { id: "req-789", method: "POST", originalUrl: "/api/test" } as unknown as Request;
 
     const mongoValError = {
       name: "ValidationError",
@@ -261,7 +262,7 @@ describe("errorHandler mappings", () => {
 
   it("maps Mongoose CastError to 400", () => {
     const { status, json, res } = createMockRes();
-    const req = { id: "req-cast", method: "GET", originalUrl: "/api/test" } as Request;
+    const req = { id: "req-cast", method: "GET", originalUrl: "/api/test" } as unknown as Request;
 
     const castErr = {
       name: "CastError",
@@ -283,7 +284,7 @@ describe("errorHandler mappings", () => {
 
   it("maps MongoDB duplicate key error (code 11000) to 409", () => {
     const { status, json, res } = createMockRes();
-    const req = { id: "req-dup", method: "POST", originalUrl: "/api/users" } as Request;
+    const req = { id: "req-dup", method: "POST", originalUrl: "/api/users" } as unknown as Request;
 
     const dupErr = {
       code: 11000,
@@ -305,7 +306,7 @@ describe("errorHandler mappings", () => {
 
   it("maps generic unhandled errors to 500", () => {
     const { status, json, res } = createMockRes();
-    const req = { id: "req-500", method: "GET", originalUrl: "/api/crash" } as Request;
+    const req = { id: "req-500", method: "GET", originalUrl: "/api/crash" } as unknown as Request;
 
     const genericErr = new Error("Database crashed unexpectedly");
 
