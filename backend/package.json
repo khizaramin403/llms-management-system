@@ -1,0 +1,23 @@
+{
+  "name": "lms-backend",
+  "version": "1.0.0",
+  "description": "Multi-tenant Laboratory Management System - Backend API",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "seed": "tsx src/scripts/seed.ts"
+  },
+  "keywords": [
+    "lms",
+    "multi-tenant",
+    "express5",
+    "mongoose",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC"
+}
