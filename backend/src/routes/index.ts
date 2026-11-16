@@ -1,8 +1,12 @@
 import { Router } from "express";
 import mongoose from "mongoose";
+import { authRouter } from "../modules/auth/auth.routes.js";
 import { sendOk } from "../utils/apiResponse.js";
 
 export const apiRouter = Router();
+
+// Mount authentication module routes at /api/v1/auth
+apiRouter.use("/auth", authRouter);
 
 const DB_STATES: Record<number, string> = {
   0: "disconnected",

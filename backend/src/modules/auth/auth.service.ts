@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { ROLES, type Role } from "../../constants/roles.js";
 import { Tenant, TENANT_STATUS } from "../tenants/tenant.model.js";
@@ -94,7 +95,10 @@ export class AuthService {
     });
 
     // Issue and persist hashed refresh token (7d)
-    const rawRefreshToken = signRefreshToken({ userId: user._id.toString() });
+    const rawRefreshToken = signRefreshToken({
+      userId: user._id.toString(),
+      tokenId: crypto.randomUUID(),
+    });
     const tokenHash = hashToken(rawRefreshToken);
     const expiresAt = new Date(Date.now() + REFRESH_COOKIE_MAX_AGE);
 
@@ -182,7 +186,10 @@ export class AuthService {
     const tenantIdStr = user.tenantId ? user.tenantId.toString() : null;
 
     // Issue rotated token pair
-    const newRefreshToken = signRefreshToken({ userId: user._id.toString() });
+    const newRefreshToken = signRefreshToken({
+      userId: user._id.toString(),
+      tokenId: crypto.randomUUID(),
+    });
     const newTokenHash = hashToken(newRefreshToken);
     const newExpiresAt = new Date(Date.now() + REFRESH_COOKIE_MAX_AGE);
 
