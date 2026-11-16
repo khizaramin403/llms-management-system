@@ -1,9 +1,10 @@
 import bcrypt from "bcryptjs";
-import mongoose from "mongoose";
 import { connectDB, disconnectDB } from "../config/db.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { ROLES } from "../constants/roles.js";
+import { Counter } from "../modules/patients/counter.model.js";
+import { Patient } from "../modules/patients/patient.model.js";
 import { Tenant, TENANT_STATUS } from "../modules/tenants/tenant.model.js";
 import { User } from "../modules/users/user.model.js";
 
@@ -23,6 +24,8 @@ export async function seed(): Promise<void> {
     logger.info("Synchronizing model indexes...");
     await Tenant.syncIndexes();
     await User.syncIndexes();
+    await Patient.syncIndexes();
+    await Counter.syncIndexes();
 
     // 2. Seed Super Admin (Idempotent)
     const superAdminEmail = env.SEED_SUPER_ADMIN_EMAIL.trim().toLowerCase();
@@ -118,97 +121,86 @@ export async function seed(): Promise<void> {
       }
 
       // C. Seed 50 Demo Patients
-      // Patient model is created in P14. If model does not exist yet, skip with informative log.
-      let PatientModel: mongoose.Model<unknown> | null =
-        (mongoose.models.Patient as mongoose.Model<unknown>) || null;
+      const receptionistUser = await User.findOne({
+        email: "receptionist@demodiagnostics.local",
+      });
 
-      if (!PatientModel) {
-        try {
-          const dynamicImport = new Function(
-            "modulePath",
-            "return import(modulePath)"
-          );
-          const patientModule = await dynamicImport(
-            "../modules/patients/patient.model.js"
-          );
-          PatientModel =
-            (patientModule.Patient ||
-              mongoose.models.Patient) as mongoose.Model<unknown>;
-        } catch {
-          PatientModel = null;
-        }
-      }
+      const patientCount = await Patient.countDocuments({
+        tenantId: demoLab._id,
+      });
 
-      if (!PatientModel) {
+      if (patientCount >= 50) {
         logger.info(
-          "Patient model does not exist yet; skipping 50 demo patients (will run after P14)"
+          { count: patientCount },
+          "Demo patients already seeded for Demo Diagnostics, skipping"
         );
       } else {
-        const patientCount = await PatientModel.countDocuments({ tenantId: demoLab._id });
-        if (patientCount >= 50) {
-          logger.info(
-            { count: patientCount },
-            "Demo patients already seeded for Demo Diagnostics, skipping"
-          );
-        } else {
-          logger.info("Seeding 50 demo patients for Demo Diagnostics...");
+        logger.info("Seeding 50 demo patients for Demo Diagnostics...");
 
-          const firstNames = [
-            "James", "Mary", "Robert", "Patricia", "John", "Jennifer", "Michael", "Linda",
-            "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica",
-            "Thomas", "Sarah", "Charles", "Karen", "Christopher", "Nancy", "Daniel", "Lisa",
-            "Matthew", "Betty", "Anthony", "Margaret", "Mark", "Sandra", "Donald", "Ashley",
-            "Steven", "Kimberly", "Paul", "Emily", "Andrew", "Donna", "Joshua", "Michelle",
-            "Kenneth", "Dorothy", "Kevin", "Carol", "Brian", "Amanda", "George", "Melissa",
-            "Edward", "Deborah",
-          ];
+        const firstNames = [
+          "James", "Mary", "Robert", "Patricia", "John", "Jennifer", "Michael", "Linda",
+          "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica",
+          "Thomas", "Sarah", "Charles", "Karen", "Christopher", "Nancy", "Daniel", "Lisa",
+          "Matthew", "Betty", "Anthony", "Margaret", "Mark", "Sandra", "Donald", "Ashley",
+          "Steven", "Kimberly", "Paul", "Emily", "Andrew", "Donna", "Joshua", "Michelle",
+          "Kenneth", "Dorothy", "Kevin", "Carol", "Brian", "Amanda", "George", "Melissa",
+          "Edward", "Deborah",
+        ];
 
-          const lastNames = [
-            "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
-            "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas",
-            "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thompson", "White",
-            "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker", "Young",
-            "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores",
-            "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell", "Mitchell",
-            "Carter", "Roberts",
-          ];
+        const lastNames = [
+          "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+          "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas",
+          "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thompson", "White",
+          "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker", "Young",
+          "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores",
+          "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell", "Mitchell",
+          "Carter", "Roberts",
+        ];
 
-          const genders = ["MALE", "FEMALE", "OTHER"] as const;
+        const genders = ["MALE", "FEMALE", "OTHER"] as const;
 
-          const demoPatients = [];
-          for (let i = 0; i < 50; i++) {
-            const firstName = firstNames[i % firstNames.length];
-            const lastName = lastNames[i % lastNames.length];
-            const gender = genders[i % genders.length];
+        const demoPatients = [];
+        for (let i = 0; i < 50; i++) {
+          const firstName = firstNames[i % firstNames.length];
+          const lastName = lastNames[i % lastNames.length];
+          const gender = genders[i % genders.length];
 
-            // Spread registrations across the last 10 days
-            const daysAgo = i % 10;
-            const registrationDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+          // Spread registrations across the last 10 days
+          const daysAgo = i % 10;
+          const registrationDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
 
-            // Realistic birth year between 1955 and 2010
-            const birthYear = 1955 + (i % 55);
-            const birthMonth = (i % 12);
-            const birthDay = 1 + (i % 28);
-            const dateOfBirth = new Date(birthYear, birthMonth, birthDay);
+          // Realistic birth year between 1955 and 2010
+          const birthYear = 1955 + (i % 55);
+          const birthMonth = (i % 12);
+          const birthDay = 1 + (i % 28);
+          const dateOfBirth = new Date(birthYear, birthMonth, birthDay);
 
-            demoPatients.push({
-              tenantId: demoLab._id,
-              patientCode: `PT-${String(i + 1).padStart(4, "0")}`,
-              name: `${firstName} ${lastName}`,
-              phone: `+1-555-${String(1000 + i).padStart(4, "0")}`,
-              gender,
-              dateOfBirth,
-              address: `${100 + i} Elm Street, Suite ${i + 1}`,
-              isActive: true,
-              createdAt: registrationDate,
-              updatedAt: registrationDate,
-            });
-          }
-
-          await PatientModel.insertMany(demoPatients);
-          logger.info("Successfully seeded 50 demo patients");
+          demoPatients.push({
+            tenantId: demoLab._id,
+            patientCode: `PT-${String(i + 1).padStart(4, "0")}`,
+            name: `${firstName} ${lastName}`,
+            phone: `+1-555-${String(1000 + i).padStart(4, "0")}`,
+            gender,
+            dateOfBirth,
+            address: `${100 + i} Elm Street, Suite ${i + 1}`,
+            isActive: true,
+            createdBy: receptionistUser?._id ?? null,
+            updatedBy: receptionistUser?._id ?? null,
+            createdAt: registrationDate,
+            updatedAt: registrationDate,
+          });
         }
+
+        await Patient.insertMany(demoPatients);
+        logger.info("Successfully seeded 50 demo patients");
       }
+
+      // Ensure Counter seq is at least 50 so next created patient starts at PT-0051
+      await Counter.findOneAndUpdate(
+        { tenantId: demoLab._id, key: "patientCode" },
+        { $max: { seq: 50 }, $setOnInsert: { tenantId: demoLab._id, key: "patientCode" } },
+        { upsert: true }
+      );
     }
 
     logger.info("Database seeding completed successfully");
