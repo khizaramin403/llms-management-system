@@ -1,0 +1,228 @@
+import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
+import { connectDB, disconnectDB } from "../config/db.js";
+import { env } from "../config/env.js";
+import { logger } from "../config/logger.js";
+import { ROLES } from "../constants/roles.js";
+import { Tenant, TENANT_STATUS } from "../modules/tenants/tenant.model.js";
+import { User } from "../modules/users/user.model.js";
+
+const DEMO_STAFF_PASSWORD = "DemoStaffPassword123!";
+
+/**
+ * Idempotent database seeder.
+ * - In all environments: Seeds the platform Super Admin from environment variables.
+ * - In development: Seeds "Demo Diagnostics" lab, staff accounts, and 50 realistic demo patients.
+ */
+export async function seed(): Promise<void> {
+  logger.info("Starting database seeding...");
+  await connectDB();
+
+  try {
+    // 1. Ensure indexes for core models
+    logger.info("Synchronizing model indexes...");
+    await Tenant.syncIndexes();
+    await User.syncIndexes();
+
+    // 2. Seed Super Admin (Idempotent)
+    const superAdminEmail = env.SEED_SUPER_ADMIN_EMAIL.trim().toLowerCase();
+    const existingSuperAdmin = await User.findOne({ email: superAdminEmail });
+
+    if (!existingSuperAdmin) {
+      const passwordHash = await bcrypt.hash(
+        env.SEED_SUPER_ADMIN_PASSWORD,
+        env.BCRYPT_ROUNDS
+      );
+
+      await User.create({
+        name: "Super Admin",
+        email: superAdminEmail,
+        passwordHash,
+        role: ROLES.SUPER_ADMIN,
+        tenantId: null,
+        isActive: true,
+      });
+
+      logger.info({ email: superAdminEmail }, "Super Admin created successfully");
+    } else {
+      logger.info({ email: superAdminEmail }, "Super Admin already exists, skipping creation");
+    }
+
+    // 3. Seed Demo Data in development mode
+    if (env.NODE_ENV === "development") {
+      logger.info("Running development demo data seeding...");
+
+      // A. Seed Demo Tenant Lab
+      let demoLab = await Tenant.findOne({ slug: "demo-diagnostics" });
+      if (!demoLab) {
+        demoLab = await Tenant.create({
+          name: "Demo Diagnostics",
+          slug: "demo-diagnostics",
+          status: TENANT_STATUS.ACTIVE,
+          contactEmail: "contact@demodiagnostics.local",
+          contactPhone: "+1-555-0199",
+        });
+        logger.info({ slug: demoLab.slug }, "Demo Lab 'Demo Diagnostics' created");
+      } else {
+        logger.info("Demo Lab 'Demo Diagnostics' already exists, skipping creation");
+      }
+
+      // Print demo staff password once in the console as requested
+      console.log("\n========================================================");
+      console.log("  DEMO STAFF CREDENTIALS (DEVELOPMENT ONLY):");
+      console.log(`  Password for all demo staff: ${DEMO_STAFF_PASSWORD}`);
+      console.log("  Lab Admin:    admin@demodiagnostics.local");
+      console.log("  Doctor:       doctor@demodiagnostics.local");
+      console.log("  Receptionist: receptionist@demodiagnostics.local");
+      console.log("========================================================\n");
+
+      // B. Seed Demo Staff (Lab Admin, Doctor, Receptionist)
+      const demoStaffUsers = [
+        {
+          name: "Demo Lab Admin",
+          email: "admin@demodiagnostics.local",
+          role: ROLES.LAB_ADMIN,
+        },
+        {
+          name: "Dr. Sarah Smith",
+          email: "doctor@demodiagnostics.local",
+          role: ROLES.DOCTOR,
+        },
+        {
+          name: "John Receptionist",
+          email: "receptionist@demodiagnostics.local",
+          role: ROLES.RECEPTIONIST,
+        },
+      ];
+
+      const staffPasswordHash = await bcrypt.hash(
+        DEMO_STAFF_PASSWORD,
+        env.BCRYPT_ROUNDS
+      );
+
+      for (const staff of demoStaffUsers) {
+        const existingStaff = await User.findOne({ email: staff.email });
+        if (!existingStaff) {
+          await User.create({
+            name: staff.name,
+            email: staff.email,
+            passwordHash: staffPasswordHash,
+            role: staff.role,
+            tenantId: demoLab._id,
+            isActive: true,
+          });
+          logger.info({ email: staff.email, role: staff.role }, "Demo staff member created");
+        } else {
+          logger.info({ email: staff.email }, "Demo staff member already exists, skipping");
+        }
+      }
+
+      // C. Seed 50 Demo Patients
+      // Patient model is created in P14. If model does not exist yet, skip with informative log.
+      let PatientModel: mongoose.Model<unknown> | null =
+        (mongoose.models.Patient as mongoose.Model<unknown>) || null;
+
+      if (!PatientModel) {
+        try {
+          const dynamicImport = new Function(
+            "modulePath",
+            "return import(modulePath)"
+          );
+          const patientModule = await dynamicImport(
+            "../modules/patients/patient.model.js"
+          );
+          PatientModel =
+            (patientModule.Patient ||
+              mongoose.models.Patient) as mongoose.Model<unknown>;
+        } catch {
+          PatientModel = null;
+        }
+      }
+
+      if (!PatientModel) {
+        logger.info(
+          "Patient model does not exist yet; skipping 50 demo patients (will run after P14)"
+        );
+      } else {
+        const patientCount = await PatientModel.countDocuments({ tenantId: demoLab._id });
+        if (patientCount >= 50) {
+          logger.info(
+            { count: patientCount },
+            "Demo patients already seeded for Demo Diagnostics, skipping"
+          );
+        } else {
+          logger.info("Seeding 50 demo patients for Demo Diagnostics...");
+
+          const firstNames = [
+            "James", "Mary", "Robert", "Patricia", "John", "Jennifer", "Michael", "Linda",
+            "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica",
+            "Thomas", "Sarah", "Charles", "Karen", "Christopher", "Nancy", "Daniel", "Lisa",
+            "Matthew", "Betty", "Anthony", "Margaret", "Mark", "Sandra", "Donald", "Ashley",
+            "Steven", "Kimberly", "Paul", "Emily", "Andrew", "Donna", "Joshua", "Michelle",
+            "Kenneth", "Dorothy", "Kevin", "Carol", "Brian", "Amanda", "George", "Melissa",
+            "Edward", "Deborah",
+          ];
+
+          const lastNames = [
+            "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+            "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas",
+            "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thompson", "White",
+            "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker", "Young",
+            "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores",
+            "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell", "Mitchell",
+            "Carter", "Roberts",
+          ];
+
+          const genders = ["MALE", "FEMALE", "OTHER"] as const;
+
+          const demoPatients = [];
+          for (let i = 0; i < 50; i++) {
+            const firstName = firstNames[i % firstNames.length];
+            const lastName = lastNames[i % lastNames.length];
+            const gender = genders[i % genders.length];
+
+            // Spread registrations across the last 10 days
+            const daysAgo = i % 10;
+            const registrationDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+
+            // Realistic birth year between 1955 and 2010
+            const birthYear = 1955 + (i % 55);
+            const birthMonth = (i % 12);
+            const birthDay = 1 + (i % 28);
+            const dateOfBirth = new Date(birthYear, birthMonth, birthDay);
+
+            demoPatients.push({
+              tenantId: demoLab._id,
+              patientCode: `PT-${String(i + 1).padStart(4, "0")}`,
+              name: `${firstName} ${lastName}`,
+              phone: `+1-555-${String(1000 + i).padStart(4, "0")}`,
+              gender,
+              dateOfBirth,
+              address: `${100 + i} Elm Street, Suite ${i + 1}`,
+              isActive: true,
+              createdAt: registrationDate,
+              updatedAt: registrationDate,
+            });
+          }
+
+          await PatientModel.insertMany(demoPatients);
+          logger.info("Successfully seeded 50 demo patients");
+        }
+      }
+    }
+
+    logger.info("Database seeding completed successfully");
+  } catch (error) {
+    logger.error({ error }, "Database seeding failed");
+    throw error;
+  } finally {
+    await disconnectDB();
+  }
+}
+
+// Execute directly if run as a script
+if (process.argv[1]?.endsWith("seed.ts") || process.argv[1]?.endsWith("seed.js")) {
+  seed()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}
