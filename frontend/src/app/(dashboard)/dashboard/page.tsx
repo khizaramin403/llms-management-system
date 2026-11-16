@@ -1,10 +1,185 @@
 "use client";
 
+import {
+  Building2,
+  CheckCircle2,
+  Users,
+  UserRound,
+  CalendarDays,
+  UserCheck,
+  UserPlus,
+  AlertCircle,
+  RotateCcw,
+} from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { RoleGuard } from "@/components/shared/RoleGuard";
+import { StatCard } from "@/components/shared/StatCard";
+import { StatCardSkeleton } from "@/components/shared/StatCardSkeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { ROLES } from "@/constants/roles";
+import { useUserRole } from "@/stores/auth.store";
+import { useDashboardStats } from "@/features/dashboard/hooks";
+import type {
+  SuperAdminDashboardStats,
+  LabAdminDashboardStats,
+  DoctorDashboardStats,
+  ReceptionistDashboardStats,
+} from "@/features/dashboard/types";
 
+/**
+ * Re-render reasoning:
+ * 1. RoleGuard subscribes strictly to useUserRole() selector.
+ * 2. TanStack Query useDashboardStats caches stats with a 60-second staleTime per PERFORMANCE.md.
+ * 3. StatCard components are memoized to avoid re-renders during route interactions.
+ */
 export default function DashboardPage() {
+  const role = useUserRole();
+  const { data, isLoading, isError, error, refetch } = useDashboardStats();
+
+  const renderStatCards = () => {
+    if (isLoading) {
+      const skeletonCount =
+        role === ROLES.DOCTOR || role === ROLES.RECEPTIONIST ? 2 : 3;
+      return (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: skeletonCount }).map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
+      );
+    }
+
+    if (isError) {
+      return (
+        <Alert variant="destructive" className="border-destructive/30">
+          <AlertCircle className="size-4" />
+          <AlertTitle className="font-semibold">
+            Failed to load statistics
+          </AlertTitle>
+          <AlertDescription className="mt-2 space-y-4">
+            <p className="text-sm">
+              {error?.message ||
+                "An unexpected error occurred while loading dashboard metrics."}
+            </p>
+            <div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                className="gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 cursor-pointer"
+              >
+                <RotateCcw className="size-3.5" />
+                Retry
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    switch (role) {
+      case ROLES.SUPER_ADMIN: {
+        const stats = data as SuperAdminDashboardStats;
+        return (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              label="Total Labs"
+              value={stats.cards?.totalLabs ?? 0}
+              icon={Building2}
+              hint="Registered laboratory facilities"
+            />
+            <StatCard
+              label="Active Labs"
+              value={stats.cards?.activeLabs ?? 0}
+              icon={CheckCircle2}
+              hint="Currently operational labs"
+            />
+            <StatCard
+              label="Total Users"
+              value={stats.cards?.totalUsers ?? 0}
+              icon={Users}
+              hint="All platform accounts across labs"
+            />
+          </div>
+        );
+      }
+
+      case ROLES.LAB_ADMIN: {
+        const stats = data as LabAdminDashboardStats;
+        return (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              label="Total Patients"
+              value={stats.cards?.totalPatients ?? 0}
+              icon={UserRound}
+              hint="All registered patient records"
+            />
+            <StatCard
+              label="Patients Today"
+              value={stats.cards?.patientsToday ?? 0}
+              icon={CalendarDays}
+              hint="Registered during today's shift"
+            />
+            <StatCard
+              label="Total Staff"
+              value={stats.cards?.totalStaff ?? 0}
+              icon={UserCheck}
+              hint="Active lab doctors and receptionists"
+            />
+          </div>
+        );
+      }
+
+      case ROLES.DOCTOR: {
+        const stats = data as DoctorDashboardStats;
+        return (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              label="Total Patients"
+              value={stats.cards?.totalPatients ?? 0}
+              icon={UserRound}
+              hint="All lab patient records"
+            />
+            <StatCard
+              label="Patients Today"
+              value={stats.cards?.patientsToday ?? 0}
+              icon={CalendarDays}
+              hint="Registered during today's shift"
+            />
+          </div>
+        );
+      }
+
+      case ROLES.RECEPTIONIST: {
+        const stats = data as ReceptionistDashboardStats;
+        return (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              label="Registered Today"
+              value={stats.cards?.registeredToday ?? 0}
+              icon={UserPlus}
+              hint="Patients registered by you today"
+            />
+            <StatCard
+              label="Total Patients"
+              value={stats.cards?.totalPatients ?? 0}
+              icon={UserRound}
+              hint="Overall lab patient database"
+            />
+          </div>
+        );
+      }
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <RoleGuard
       allowedRoles={[
@@ -14,10 +189,30 @@ export default function DashboardPage() {
         ROLES.RECEPTIONIST,
       ]}
     >
-      <PageHeader
-        title="Dashboard"
-        description="Overview and performance statistics"
-      />
+      <div className="space-y-6">
+        <PageHeader
+          title="Dashboard"
+          description="Overview and performance statistics"
+        />
+
+        {/* Metric Cards Row */}
+        {renderStatCards()}
+
+        {/* Clearly marked empty area for charts and recent table (Step 12) */}
+        <section
+          aria-label="Dashboard Analytics and Activity Area"
+          className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-8 text-center"
+        >
+          <div className="mx-auto max-w-sm space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              Charts & Recent Activity
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Registration trends, breakdowns, and recent patients will render here.
+            </p>
+          </div>
+        </section>
+      </div>
     </RoleGuard>
   );
 }
