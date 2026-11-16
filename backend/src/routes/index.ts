@@ -9,13 +9,6 @@ import { sendOk } from "../utils/apiResponse.js";
 
 export const apiRouter = Router();
 
-// Mount modules at /api/v1
-apiRouter.use("/auth", authRouter);
-apiRouter.use("/tenants", tenantRouter);
-apiRouter.use("/users", userRouter);
-apiRouter.use("/patients", patientRouter);
-apiRouter.use("/dashboard", dashboardRouter);
-
 const DB_STATES: Record<number, string> = {
   0: "disconnected",
   1: "connected",
@@ -27,11 +20,20 @@ const DB_STATES: Record<number, string> = {
  * Public health check endpoint for monitoring, Docker, and load balancers.
  * Returns server uptime and MongoDB connection state.
  */
-apiRouter.get("/health", (_req, res) => {
+export function healthCheckHandler(_req: unknown, res: Parameters<typeof sendOk>[0]): void {
   const dbStatus = DB_STATES[mongoose.connection.readyState] ?? "unknown";
   sendOk(res, {
     status: "ok",
     uptime: Math.floor(process.uptime()),
     db: dbStatus,
   });
-});
+}
+
+apiRouter.get("/health", healthCheckHandler);
+
+// Mount modules at /api/v1
+apiRouter.use("/auth", authRouter);
+apiRouter.use("/tenants", tenantRouter);
+apiRouter.use("/users", userRouter);
+apiRouter.use("/patients", patientRouter);
+apiRouter.use("/dashboard", dashboardRouter);

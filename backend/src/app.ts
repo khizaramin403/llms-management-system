@@ -11,7 +11,7 @@ import { notFound } from "./middlewares/notFound.js";
 import { apiLimiter } from "./middlewares/rateLimiter.js";
 import { requestId } from "./middlewares/requestId.js";
 import { sanitize } from "./middlewares/sanitize.js";
-import { apiRouter } from "./routes/index.js";
+import { apiRouter, healthCheckHandler } from "./routes/index.js";
 
 /**
  * Creates and configures the Express application with security, logging,
@@ -67,7 +67,8 @@ export function createApp(): Express {
   // 9. Global API Rate Limiting (300 req / 15 min)
   app.use(apiLimiter);
 
-  // 10. API v1 routes
+  // 10. Public Health check endpoint & API v1 routes
+  app.get("/health", healthCheckHandler);
   app.use("/api/v1", apiRouter);
 
   // 11. 404 handler for unmatched routes
