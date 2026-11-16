@@ -3,7 +3,7 @@
 import * as React from "react";
 import { type SortingState, type OnChangeFn } from "@tanstack/react-table";
 import { DataTable } from "@/components/shared/DataTable";
-import { labColumns } from "./LabColumns";
+import { getLabColumns, labColumns } from "./LabColumns";
 import type { Lab } from "../types";
 
 export interface LabsTableProps {
@@ -16,13 +16,14 @@ export interface LabsTableProps {
   onSortingChange?: OnChangeFn<SortingState>;
   pagination?: React.ReactNode;
   emptyState?: React.ReactNode;
+  onEdit?: (lab: Lab) => void;
+  onToggleStatus?: (lab: Lab) => void;
 }
 
 /**
  * Re-render reasoning:
- * LabsTable acts as a presentation boundary using stable labColumns.
- * Interactions with pagination or sorting update URL state upstream,
- * allowing this component to re-render with fresh data without re-mounting headers.
+ * LabsTable memoizes table columns based on stable edit and status-toggle callbacks.
+ * TanStack Table remains decoupled from parent state, rendering updates efficiently.
  */
 export function LabsTable({
   data,
@@ -34,10 +35,19 @@ export function LabsTable({
   onSortingChange,
   pagination,
   emptyState,
+  onEdit,
+  onToggleStatus,
 }: LabsTableProps) {
+  const columns = React.useMemo(() => {
+    if (onEdit || onToggleStatus) {
+      return getLabColumns({ onEdit, onToggleStatus });
+    }
+    return labColumns;
+  }, [onEdit, onToggleStatus]);
+
   return (
     <DataTable
-      columns={labColumns}
+      columns={columns}
       data={data}
       isLoading={isLoading}
       isFetching={isFetching}

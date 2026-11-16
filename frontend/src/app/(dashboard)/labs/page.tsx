@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Suspense } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { parseAsString } from "nuqs";
 import { Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -16,19 +17,22 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { RoleGuard } from "@/components/shared/RoleGuard";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { ROLES } from "@/constants/roles";
 import { useTableParams } from "@/hooks/use-table-params";
-import { useLabs } from "@/features/labs/hooks";
+import { useLabs, useUpdateLab } from "@/features/labs/hooks";
 import { LabsTable } from "@/features/labs/components/LabsTable";
+import { LabFormDialog } from "@/features/labs/components/LabFormDialog";
+import type { Lab, TenantStatus } from "@/features/labs/types";
 
 /**
  * Re-render reasoning:
- * 1. LabsContent subscribes directly to URL search parameters using `useTableParams`.
- * 2. Search debouncing (300ms) and filter selects write to the URL shallowly,
- *    triggering only the table query without mounting/unmounting page-level layouts.
- * 3. `keepPreviousData` ensures no layout flicker during pagination or search transitions.
+ * 1. LabsContent isolates URL state subscriptions (useTableParams) and TanStack Query (useLabs).
+ * 2. Form and confirmation dialog states are isolated locally to modal triggers.
+ * 3. Stable callbacks (handleAddLab, handleEditLab, handleToggleStatusClick) prevent unnecessary
+ *    table header/column recalculations on re-render.
  */
 function LabsContent() {
   const {
@@ -55,6 +59,7 @@ function LabsContent() {
   const status = (filters.status as string) || "";
   const hasActiveFilters = Boolean(search || status);
 
+  // Labs list query with keepPreviousData
   const { data, isLoading, isFetching, isError, refetch } = useLabs({
     page,
     limit,
@@ -62,6 +67,55 @@ function LabsContent() {
     status: status || undefined,
     sort: sort || undefined,
   });
+
+  // Dialog state for create / edit
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
+
+  // Dialog state for activate / deactivate
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusLab, setStatusLab] = useState<Lab | null>(null);
+
+  const updateLabMutation = useUpdateLab();
+
+  const handleAddLab = useCallback(() => {
+    setSelectedLab(null);
+    setFormDialogOpen(true);
+  }, []);
+
+  const handleEditLab = useCallback((lab: Lab) => {
+    setSelectedLab(lab);
+    setFormDialogOpen(true);
+  }, []);
+
+  const handleToggleStatusClick = useCallback((lab: Lab) => {
+    setStatusLab(lab);
+    setStatusDialogOpen(true);
+  }, []);
+
+  const handleConfirmToggleStatus = async () => {
+    if (!statusLab) return;
+    const isDeactivating = statusLab.status === "ACTIVE";
+    const nextStatus: TenantStatus = isDeactivating ? "INACTIVE" : "ACTIVE";
+
+    updateLabMutation.mutate(
+      {
+        id: statusLab.id,
+        data: { status: nextStatus },
+      },
+      {
+        onSuccess: (updated) => {
+          toast.success(
+            isDeactivating
+              ? `Lab "${updated.name}" deactivated successfully`
+              : `Lab "${updated.name}" activated successfully`
+          );
+          setStatusDialogOpen(false);
+          setStatusLab(null);
+        },
+      }
+    );
+  };
 
   const labs = data?.data ?? [];
   const meta = data?.meta ?? {
@@ -72,7 +126,19 @@ function LabsContent() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Page Header with primary Add lab action */}
+      <PageHeader
+        title="Labs"
+        description="Manage laboratory organizations and administrative accounts"
+        actions={
+          <Button onClick={handleAddLab} className="gap-2">
+            <Plus className="size-4" />
+            Add lab
+          </Button>
+        }
+      />
+
       {/* Search and Filter toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -126,6 +192,8 @@ function LabsContent() {
         onRetry={() => refetch()}
         sorting={sorting}
         onSortingChange={onSortingChange}
+        onEdit={handleEditLab}
+        onToggleStatus={handleToggleStatusClick}
         pagination={
           <DataTablePagination
             page={page}
@@ -154,14 +222,49 @@ function LabsContent() {
               title="No labs found"
               description="No diagnostic laboratories have been registered yet."
               action={
-                <Button size="sm" disabled className="cursor-not-allowed">
-                  <Plus className="mr-2 size-4" />
+                <Button size="sm" onClick={handleAddLab} className="gap-2">
+                  <Plus className="size-4" />
                   Add lab
                 </Button>
               }
             />
           )
         }
+      />
+
+      {/* Lab Form Dialog (Create and Edit) */}
+      <LabFormDialog
+        open={formDialogOpen}
+        onOpenChange={(open) => {
+          setFormDialogOpen(open);
+          if (!open) setSelectedLab(null);
+        }}
+        lab={selectedLab}
+      />
+
+      {/* Activate / Deactivate Confirmation Dialog */}
+      <ConfirmDialog
+        open={statusDialogOpen}
+        onOpenChange={(open) => {
+          setStatusDialogOpen(open);
+          if (!open) setStatusLab(null);
+        }}
+        title={
+          statusLab?.status === "ACTIVE"
+            ? `Deactivate ${statusLab.name}?`
+            : `Activate ${statusLab?.name}?`
+        }
+        description={
+          statusLab?.status === "ACTIVE"
+            ? "Deactivating this laboratory will immediately revoke access for all associated users. You can reactivate it at any time."
+            : "Activating this laboratory will restore system access for all its administrators and staff."
+        }
+        confirmLabel={
+          statusLab?.status === "ACTIVE" ? "Deactivate Lab" : "Activate Lab"
+        }
+        destructive={statusLab?.status === "ACTIVE"}
+        isPending={updateLabMutation.isPending}
+        onConfirm={handleConfirmToggleStatus}
       />
     </div>
   );
@@ -170,21 +273,9 @@ function LabsContent() {
 export default function LabsPage() {
   return (
     <RoleGuard allowedRoles={[ROLES.SUPER_ADMIN]}>
-      <div className="space-y-6">
-        <PageHeader
-          title="Labs"
-          description="Manage laboratory organizations and administrative accounts"
-          actions={
-            <Button disabled className="cursor-not-allowed">
-              <Plus className="mr-2 size-4" />
-              Add lab
-            </Button>
-          }
-        />
-        <Suspense fallback={<TableSkeleton rowCount={5} columnCount={7} />}>
-          <LabsContent />
-        </Suspense>
-      </div>
+      <Suspense fallback={<TableSkeleton rowCount={5} columnCount={7} />}>
+        <LabsContent />
+      </Suspense>
     </RoleGuard>
   );
 }
