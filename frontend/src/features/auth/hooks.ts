@@ -1,3 +1,4 @@
+import { useRouter } from "next/navigation";
 import {
   useMutation,
   useQuery,
@@ -41,22 +42,31 @@ export function useLogin(
 
 /**
  * Mutation hook for logging out.
- * Clears Zustand auth store and invalidates auth queries upon completion.
+ * Clears Zustand auth store, purges entire TanStack Query cache, and redirects to /login.
  */
 export function useLogout(
   options?: UseMutationOptions<LogoutResponse, ApiError, void>
 ) {
   const queryClient = useQueryClient();
   const clearAuth = useAuthStore((s) => s.clear);
+  const router = useRouter();
+
+  const handleLogout = () => {
+    clearAuth();
+    queryClient.clear();
+    router.push("/login");
+  };
 
   return useMutation({
     ...options,
     mutationFn: logout,
     onSuccess: (...args) => {
-      clearAuth();
-      queryClient.removeQueries({ queryKey: queryKeys.auth.all });
-      queryClient.clear();
+      handleLogout();
       options?.onSuccess?.(...args);
+    },
+    onError: (...args) => {
+      handleLogout();
+      options?.onError?.(...args);
     },
   });
 }
