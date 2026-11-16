@@ -2,6 +2,7 @@ import { Router } from "express";
 import mongoose from "mongoose";
 import { authRouter } from "../modules/auth/auth.routes.js";
 import { tenantRouter } from "../modules/tenants/tenant.routes.js";
+import { userRouter } from "../modules/users/user.routes.js";
 import { sendOk } from "../utils/apiResponse.js";
 
 export const apiRouter = Router();
@@ -9,6 +10,7 @@ export const apiRouter = Router();
 // Mount modules at /api/v1
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/tenants", tenantRouter);
+apiRouter.use("/users", userRouter);
 
 const DB_STATES: Record<number, string> = {
   0: "disconnected",
