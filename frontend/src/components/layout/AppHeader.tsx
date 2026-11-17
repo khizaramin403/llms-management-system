@@ -16,6 +16,7 @@ import { getPalette, setPalette, type Palette } from "@/lib/palette";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -92,19 +93,21 @@ export function AppHeader() {
               className="w-56 rounded-lg bg-popover text-popover-foreground shadow-lg"
               sideOffset={6}
             >
-              <DropdownMenuLabel className="p-2 font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none text-foreground">
-                    {user.name}
-                  </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user.email}
-                  </p>
-                </div>
-                <div className="mt-2">
-                  <RoleBadge role={user.role} />
-                </div>
-              </DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="p-2 font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none text-foreground">
+                      {user.name}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                  <div className="mt-2">
+                    <RoleBadge role={user.role} />
+                  </div>
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
 

@@ -19,6 +19,11 @@ out/
 # Testing & Coverage
 coverage/
 
+# Database & local runtime storage
+.mongo-data/
+*.wt
+*.lock
+
 # Logs
 logs/
 *.log
