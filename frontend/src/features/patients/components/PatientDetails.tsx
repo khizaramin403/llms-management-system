@@ -37,7 +37,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { can } from "@/constants/permissions";
 import { useAuthStore } from "@/stores/auth.store";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/types/api";
 import { usePatient, useDeactivatePatient } from "../hooks";
@@ -447,13 +447,13 @@ export function PatientDetails({ patientId: propPatientId }: PatientDetailsProps
               </div>
             </div>
 
-            {/* 6. Registered date */}
+            {/* 6. Registered date & time */}
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">
-                Registered date
+                Registered on
               </p>
               <p className="text-sm font-medium text-foreground tabular-nums">
-                {formatDate(patient.createdAt)}
+                {formatDateTime(patient.createdAt)}
               </p>
             </div>
           </div>

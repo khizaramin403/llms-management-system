@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { ROLES, type Role } from "@/constants/roles";
 import { cn } from "@/lib/utils";
 import type { Gender, Patient } from "../types";
@@ -204,11 +204,19 @@ export function getPatientColumns(
       accessorKey: "createdAt",
       header: "Registered",
       enableSorting: true,
-      cell: ({ row }) => (
-        <span className="text-muted-foreground tabular-nums whitespace-nowrap">
-          {formatDate(row.original.createdAt)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const date = row.original.createdAt;
+        return (
+          <div className="flex flex-col tabular-nums">
+            <span className="text-foreground text-sm font-medium whitespace-nowrap">
+              {formatDate(date)}
+            </span>
+            <span className="text-muted-foreground text-xs whitespace-nowrap">
+              {formatDateTime(date, "h:mm a")}
+            </span>
+          </div>
+        );
+      },
     },
     {
       id: "actions",

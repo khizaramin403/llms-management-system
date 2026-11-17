@@ -13,7 +13,7 @@ import {
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
-import { formatRelative } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import type { RecentPatientItem } from "../types";
 
 export interface RecentPatientsTableProps {
@@ -117,8 +117,15 @@ export const RecentPatientsTable = React.memo(function RecentPatientsTable({
                   <TableCell className="py-2 text-xs text-muted-foreground capitalize">
                     {patient.gender?.toLowerCase() || "-"}
                   </TableCell>
-                  <TableCell className="pr-4 py-2 text-right text-xs text-muted-foreground whitespace-nowrap">
-                    {formatRelative(patient.createdAt)}
+                  <TableCell className="pr-4 py-2 text-right text-xs whitespace-nowrap">
+                    <div className="flex flex-col items-end tabular-nums">
+                      <span className="text-foreground font-medium">
+                        {formatDate(patient.createdAt)}
+                      </span>
+                      <span className="text-muted-foreground text-[11px]">
+                        {formatDateTime(patient.createdAt, "h:mm a")}
+                      </span>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
