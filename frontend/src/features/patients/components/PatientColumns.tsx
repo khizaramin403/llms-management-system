@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
@@ -178,6 +179,7 @@ export function getPatientColumns(
               <DropdownMenuContent align="end" className="w-40">
                 {/* View details - available for all roles */}
                 <DropdownMenuItem
+                  render={<Link href={`/patients/${patient.id}`} prefetch={true} />}
                   onClick={() => options?.onView?.(patient)}
                   className="cursor-pointer"
                 >

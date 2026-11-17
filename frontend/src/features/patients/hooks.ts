@@ -73,6 +73,7 @@ export function usePatients<T = Paginated<Patient>>(
 
 /**
  * Fetches full details for a single patient by ID.
+ * Uses initialData from cache (e.g. from table list queries) to eliminate loading delays.
  */
 export function usePatient<T = Patient>(
   id: string,
@@ -81,10 +82,27 @@ export function usePatient<T = Patient>(
     "queryKey" | "queryFn"
   >
 ) {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: queryKeys.patients.detail(id),
     queryFn: () => getPatient(id),
     enabled: Boolean(id),
+    initialData: () => {
+      const cached = queryClient.getQueryData<Patient>(
+        queryKeys.patients.detail(id)
+      );
+      if (cached) return cached;
+
+      const listQueries = queryClient.getQueriesData<Paginated<Patient>>({
+        queryKey: queryKeys.patients.all,
+      });
+      for (const [, listData] of listQueries) {
+        const found = listData?.data?.find((p) => p.id === id);
+        if (found) return found;
+      }
+      return undefined;
+    },
     ...options,
   });
 }

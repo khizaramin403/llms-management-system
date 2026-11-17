@@ -4,9 +4,11 @@ import * as React from "react";
 import { Suspense, useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { parseAsString } from "nuqs";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -59,11 +61,14 @@ function PatientsContent() {
   const canRegister = can(userRole, "patient:create");
   const router = useRouter();
 
+  const queryClient = useQueryClient();
+
   const handleViewClick = useCallback(
     (patient: Patient) => {
+      queryClient.setQueryData(queryKeys.patients.detail(patient.id), patient);
       router.push(`/patients/${patient.id}`);
     },
-    [router]
+    [router, queryClient]
   );
 
   const {

@@ -79,7 +79,7 @@ const GENDER_CONFIG: Record<
   },
 };
 
-function PatientDetailsSkeleton() {
+export function PatientDetailsSkeleton() {
   return (
     <div className="space-y-6">
       {/* Breadcrumb Skeleton */}
