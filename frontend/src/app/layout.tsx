@@ -52,7 +52,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col font-sans">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col font-sans"
+      >
         <NuqsAdapter>
           <ThemeProvider>
             <QueryProvider>
