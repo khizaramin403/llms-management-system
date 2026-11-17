@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { computeAgeFromDob } from "./PatientColumns";
 import { useCreatePatient, useUpdatePatient } from "../hooks";
 import {
   createPatientSchema,
@@ -75,6 +76,14 @@ function PatientFormContent({
     ? patient.dateOfBirth.slice(0, 10)
     : "";
 
+  const initialAge = computeAgeFromDob(dobFormatted);
+  const [ageValue, setAgeValue] = useState<string>(
+    initialAge ? String(initialAge.value) : ""
+  );
+  const [ageUnit, setAgeUnit] = useState<"years" | "months" | "days">(
+    initialAge ? initialAge.unit : "years"
+  );
+
   const form = useForm<CreatePatientFormValues>({
     resolver: zodResolver(createPatientSchema),
     defaultValues: {
@@ -85,6 +94,73 @@ function PatientFormContent({
       address: patient?.address || "",
     },
   });
+
+  const handleDobChange = (dobStr: string) => {
+    if (!dobStr) {
+      setAgeValue("");
+      return;
+    }
+    const computed = computeAgeFromDob(dobStr);
+    if (computed) {
+      setAgeValue(String(computed.value));
+      setAgeUnit(computed.unit);
+    }
+  };
+
+  const updateDobFromAge = (
+    valueStr: string,
+    unit: "years" | "months" | "days"
+  ) => {
+    const val = parseInt(valueStr, 10);
+    if (isNaN(val) || val < 0) return;
+
+    const today = new Date();
+    const targetDate = new Date(today);
+
+    if (unit === "years") {
+      targetDate.setFullYear(today.getFullYear() - val);
+    } else if (unit === "months") {
+      targetDate.setMonth(today.getMonth() - val);
+    } else if (unit === "days") {
+      targetDate.setDate(today.getDate() - val);
+    }
+
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(targetDate.getDate()).padStart(2, "0");
+    const formattedDate = `${yyyy}-${mm}-${dd}`;
+
+    form.setValue("dateOfBirth", formattedDate, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  const handleAgeValueChange = (valStr: string) => {
+    const cleaned = valStr.replace(/\D/g, "");
+    setAgeValue(cleaned);
+    if (cleaned) {
+      updateDobFromAge(cleaned, ageUnit);
+    }
+  };
+
+  const handleAgeUnitChange = (unit: "years" | "months" | "days") => {
+    setAgeUnit(unit);
+    if (ageValue) {
+      updateDobFromAge(ageValue, unit);
+    }
+  };
+
+  React.useEffect(() => {
+    if (patient?.dateOfBirth) {
+      const dobStr = patient.dateOfBirth.slice(0, 10);
+      const computed = computeAgeFromDob(dobStr);
+      if (computed) {
+        setAgeValue(String(computed.value));
+        setAgeUnit(computed.unit);
+      }
+    }
+  }, [patient]);
 
   const onSubmit = (values: CreatePatientFormValues) => {
     setServerError(null);
@@ -249,25 +325,60 @@ function PatientFormContent({
             />
 
             {/* Date of Birth */}
-            <div className="md:col-span-2">
-              <FormField
-                control={form.control}
-                name="dateOfBirth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date of Birth</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        max={todayDateString}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="dateOfBirth"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date of Birth</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      max={todayDateString}
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        handleDobChange(e.target.value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Age */}
+            <FormItem>
+              <FormLabel>Age</FormLabel>
+              <div className="flex items-center gap-2">
+                <FormControl>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 25"
+                    value={ageValue}
+                    onChange={(e) => handleAgeValueChange(e.target.value)}
+                    className="w-1/2"
+                  />
+                </FormControl>
+                <Select
+                  value={ageUnit}
+                  onValueChange={(val) => {
+                    if (val) handleAgeUnitChange(val as "years" | "months" | "days");
+                  }}
+                >
+                  <SelectTrigger className="w-1/2">
+                    <SelectValue placeholder="Unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="years">Years</SelectItem>
+                    <SelectItem value="months">Months</SelectItem>
+                    <SelectItem value="days">Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <FormMessage />
+            </FormItem>
 
             {/* Address (Optional) */}
             <div className="md:col-span-2">

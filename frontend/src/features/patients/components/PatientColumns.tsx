@@ -42,24 +42,74 @@ const GENDER_CONFIG: Record<
   },
 };
 
+export interface AgeCalculation {
+  value: number;
+  unit: "years" | "months" | "days";
+  text: string;
+}
+
 /**
- * Calculates current chronological age from an ISO date of birth string.
+ * Computes chronological age value and unit (years, months, or days) from date of birth.
+ */
+export function computeAgeFromDob(
+  dateOfBirth: string | Date | null | undefined
+): AgeCalculation | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  if (isNaN(dob.getTime())) return null;
+
+  const today = new Date();
+  const birthDate = new Date(dob.getFullYear(), dob.getMonth(), dob.getDate());
+  const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  if (birthDate > currentDate) return null;
+
+  let years = currentDate.getFullYear() - birthDate.getFullYear();
+  let months = currentDate.getMonth() - birthDate.getMonth();
+  let days = currentDate.getDate() - birthDate.getDate();
+
+  if (days < 0) {
+    months--;
+    const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  if (years >= 1) {
+    return {
+      value: years,
+      unit: "years",
+      text: `${years} ${years === 1 ? "yr" : "yrs"}`,
+    };
+  }
+
+  if (months >= 1) {
+    return {
+      value: months,
+      unit: "months",
+      text: `${months} ${months === 1 ? "month" : "months"}`,
+    };
+  }
+
+  return {
+    value: days,
+    unit: "days",
+    text: `${days} ${days === 1 ? "day" : "days"}`,
+  };
+}
+
+/**
+ * Calculates current chronological age string (years, months, or days) from an ISO date of birth.
  */
 export function calculateAge(
   dateOfBirth: string | Date | null | undefined
 ): string {
-  if (!dateOfBirth) return "—";
-  const dob = new Date(dateOfBirth);
-  if (isNaN(dob.getTime())) return "—";
-
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const monthDiff = today.getMonth() - dob.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-    age--;
-  }
-
-  return age >= 0 ? `${age} yrs` : "—";
+  const computed = computeAgeFromDob(dateOfBirth);
+  return computed ? computed.text : "—";
 }
 
 /**
