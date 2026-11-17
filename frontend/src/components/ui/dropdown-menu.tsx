@@ -56,7 +56,7 @@ function DropdownMenuLabel({
   className,
   inset,
   ...props
-}: React: any.ComponentProps: any: any: any<: any: any: any"div"> & {
+}: React.ComponentProps<"div"> & {
   inset?: boolean
 }) {
   return (
