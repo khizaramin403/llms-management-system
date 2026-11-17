@@ -5,6 +5,7 @@ import { LogOut, Palette as PaletteIcon } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { ThemeToggle } from "./ThemeToggle";
+import { PaletteSwitcher } from "./PaletteSwitcher";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RoleBadge } from "@/components/shared/RoleBadge";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ export function AppHeader() {
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
+        <PaletteSwitcher />
         <ThemeToggle />
 
         {/* Prominent direct log out button in the header */}

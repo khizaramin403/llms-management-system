@@ -29,3 +29,15 @@ export function setPalette(palette: Palette): void {
     // Ignore localStorage access errors
   }
 }
+
+export function subscribeToPalette(callback: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  window.addEventListener("palette-change", callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener("palette-change", callback);
+    window.removeEventListener("storage", callback);
+  };
+}
