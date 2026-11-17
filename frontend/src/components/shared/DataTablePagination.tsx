@@ -66,9 +66,21 @@ export function DataTablePagination({
     >
       {/* Record counter with tabular numbers */}
       <div className="text-sm text-muted-foreground tabular-nums">
-        Showing <span className="font-medium text-foreground">{start}</span> to{" "}
-        <span className="font-medium text-foreground">{end}</span> of{" "}
-        <span className="font-medium text-foreground">{total}</span>
+        {total === 0 ? (
+          "No results"
+        ) : total <= safeLimit ? (
+          <>
+            Showing <span className="font-medium text-foreground">{total}</span>{" "}
+            {total === 1 ? "result" : "results"}
+          </>
+        ) : (
+          <>
+            Showing{" "}
+            <span className="font-medium text-foreground">{start}</span>–
+            <span className="font-medium text-foreground">{end}</span> of{" "}
+            <span className="font-medium text-foreground">{total}</span> results
+          </>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-4 sm:gap-6">

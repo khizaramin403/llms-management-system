@@ -21,11 +21,14 @@ export default async function DashboardLayout({
 
   return (
     <AuthGate>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      <SidebarProvider
+        defaultOpen={defaultOpen}
+        className="h-svh max-h-svh w-full overflow-hidden"
+      >
         <AppSidebar />
-        <SidebarInset className="flex flex-col min-h-screen">
+        <SidebarInset className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
           <AppHeader />
-          <div className="flex-1 w-full bg-background">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden bg-background">
             <main className="mx-auto w-full max-w-[1280px] p-4 sm:p-6">
               {children}
             </main>

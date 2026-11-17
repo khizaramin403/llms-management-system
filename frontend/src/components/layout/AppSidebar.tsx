@@ -51,8 +51,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       className="border-r border-sidebar-border bg-sidebar"
       {...props}
     >
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-3 overflow-hidden">
+      <SidebarHeader className="h-14 justify-center border-b border-sidebar-border px-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:items-center">
+        <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
             <FlaskConical className="size-4" />
           </div>
@@ -83,7 +83,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className={cn(
                       "relative transition-colors",
                       active &&
-                        "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     )}
                   >
                     {active && (

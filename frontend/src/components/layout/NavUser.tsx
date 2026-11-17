@@ -5,7 +5,6 @@ import { useTheme } from "next-themes";
 import {
   Sun,
   Moon,
-  Monitor,
   Palette as PaletteIcon,
   LogOut,
   ChevronsUpDown,
@@ -15,12 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -117,57 +111,43 @@ export function NavUser() {
 
             <DropdownMenuSeparator />
 
-            {/* Theme selection submenu */}
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="cursor-pointer">
-                <Sun className="mr-2 size-4" />
+            {/* Quick theme toggle */}
+            <DropdownMenuItem
+              className="cursor-pointer flex items-center justify-between"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              <div className="flex items-center gap-2">
+                <Sun className="size-4 dark:hidden" />
+                <Moon className="size-4 hidden dark:block" />
                 <span>Theme</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-36">
-                <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-                  <DropdownMenuRadioItem value="light" className="cursor-pointer">
-                    <Sun className="mr-2 size-4" />
-                    Light
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="dark" className="cursor-pointer">
-                    <Moon className="mr-2 size-4" />
-                    Dark
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="system" className="cursor-pointer">
-                    <Monitor className="mr-2 size-4" />
-                    System
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+              </div>
+              <span className="text-xs text-muted-foreground capitalize font-medium">
+                {theme ?? "system"}
+              </span>
+            </DropdownMenuItem>
 
-            {/* Palette selection submenu */}
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="cursor-pointer">
-                <PaletteIcon className="mr-2 size-4" />
+            {/* Palette toggle */}
+            <DropdownMenuItem
+              className="cursor-pointer flex items-center justify-between"
+              onClick={() =>
+                handlePaletteChange(currentPalette === "navy" ? "cream" : "navy")
+              }
+            >
+              <div className="flex items-center gap-2">
+                <PaletteIcon className="size-4" />
                 <span>Palette</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-36">
-                <DropdownMenuRadioGroup
-                  value={currentPalette}
-                  onValueChange={(val) => handlePaletteChange(val as Palette)}
-                >
-                  <DropdownMenuRadioItem value="navy" className="cursor-pointer">
-                    Navy
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="cream" className="cursor-pointer">
-                    Cream
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+              </div>
+              <span className="text-xs text-muted-foreground capitalize font-medium">
+                {currentPalette}
+              </span>
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
 
             {/* Logout action */}
             <DropdownMenuItem
               variant="destructive"
-              className="cursor-pointer"
+              className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
               onClick={() => logoutMutation.mutate()}
               disabled={logoutMutation.isPending}
             >
