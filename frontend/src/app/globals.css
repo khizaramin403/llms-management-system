@@ -228,6 +228,10 @@
     font-size: 14px;
     line-height: 1.5;
   }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 /* Note on tabular-nums utility:

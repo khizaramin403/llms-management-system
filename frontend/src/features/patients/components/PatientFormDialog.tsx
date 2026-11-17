@@ -204,13 +204,18 @@ function PatientFormContent({
                 <FormItem>
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                    <Input
-                      type="tel"
-                      placeholder="e.g. +1234567890"
-                      autoComplete="off"
-                      {...field}
-                    />
-                  </FormControl>
+                      <Input
+                        type="tel"
+                        placeholder="e.g. 03001234567"
+                        autoComplete="off"
+                        {...field}
+                        onChange={(e) => {
+                          // Sirf 0 se 9 tak ke digits allow karega
+                          const onlyNumbers = e.target.value.replace(/\D/g, "");
+                          field.onChange(onlyNumbers);
+                        }}
+                      />
+                    </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
