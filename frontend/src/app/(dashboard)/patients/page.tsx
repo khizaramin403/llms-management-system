@@ -158,7 +158,7 @@ function PatientsContent() {
         description="Manage patient records, demographics, and registration details"
         actions={
           canRegister ? (
-            <Button className="gap-2" onClick={handleRegisterClick}>
+            <Button className="gap-2 hover:cursor-pointer" onClick={handleRegisterClick}>
               <Plus className="size-4" />
               Register patient
             </Button>
@@ -255,7 +255,7 @@ function PatientsContent() {
                 canRegister ? (
                   <Button
                     size="sm"
-                    className="gap-2 hover:cursor-pointer"
+                    className="gap-2 cursor-pointer"
                     onClick={handleRegisterClick}
                   >
                     <Plus className="size-4" />
