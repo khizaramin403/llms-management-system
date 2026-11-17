@@ -75,9 +75,14 @@ export async function seed(options?: SeedOptions): Promise<void> {
       logger.info({ email: superAdminEmail }, "Super Admin already exists, skipping creation");
     }
 
-    // 3. Seed Demo Data in development mode
-    if (env.NODE_ENV === "development") {
-      logger.info("Running development demo data seeding...");
+    // 3. Seed Demo Data (seeds Demo Diagnostics lab, staff, and demo patients)
+    const shouldSeedDemo =
+      env.NODE_ENV === "development" ||
+      process.env.SEED_DEMO !== "false" ||
+      process.argv.includes("--demo");
+
+    if (shouldSeedDemo) {
+      logger.info("Running demo data seeding (lab, staff users, patients)...");
 
       // A. Seed Demo Tenant Lab
       let demoLab = await Tenant.findOne({ slug: "demo-diagnostics" });
