@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import {
   Sun,
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RoleBadge } from "@/components/shared/RoleBadge";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useAuthStore } from "@/stores/auth.store";
 import { useLogout } from "@/features/auth/hooks";
 import { getPalette, setPalette, type Palette } from "@/lib/palette";
@@ -49,6 +50,7 @@ function subscribeToPalette(callback: () => void) {
 export function NavUser() {
   const user = useAuthStore((s) => s.user);
   const logoutMutation = useLogout();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
 
@@ -148,7 +150,7 @@ export function NavUser() {
             <DropdownMenuItem
               variant="destructive"
               className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-              onClick={() => logoutMutation.mutate()}
+              onClick={() => setShowLogoutConfirm(true)}
               disabled={logoutMutation.isPending}
             >
               <LogOut className="mr-2 size-4" />
@@ -156,6 +158,21 @@ export function NavUser() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Shadcn Alert Dialog confirmation for logout */}
+        <ConfirmDialog
+          open={showLogoutConfirm}
+          onOpenChange={setShowLogoutConfirm}
+          title="Log out"
+          description="Are you sure you want to log out of your account?"
+          confirmLabel="Log out"
+          cancelLabel="Cancel"
+          destructive
+          isPending={logoutMutation.isPending}
+          onConfirm={async () => {
+            await logoutMutation.mutateAsync();
+          }}
+        />
       </SidebarMenuItem>
     </SidebarMenu>
   );

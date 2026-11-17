@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { LogOut, Palette as PaletteIcon } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Breadcrumbs } from "./Breadcrumbs";
@@ -8,6 +8,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { PaletteSwitcher } from "./PaletteSwitcher";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RoleBadge } from "@/components/shared/RoleBadge";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth.store";
 import { useLogout } from "@/features/auth/hooks";
@@ -42,6 +43,7 @@ function subscribeToPalette(callback: () => void) {
 export function AppHeader() {
   const user = useAuthStore((s) => s.user);
   const logoutMutation = useLogout();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const currentPalette = useSyncExternalStore(
     subscribeToPalette,
@@ -69,7 +71,7 @@ export function AppHeader() {
           variant="ghost"
           size="icon-sm"
           className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-          onClick={() => logoutMutation.mutate()}
+          onClick={() => setShowLogoutConfirm(true)}
           disabled={logoutMutation.isPending}
           title="Log out"
           aria-label="Log out"
@@ -127,7 +129,7 @@ export function AppHeader() {
               <DropdownMenuItem
                 variant="destructive"
                 className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-                onClick={() => logoutMutation.mutate()}
+                onClick={() => setShowLogoutConfirm(true)}
                 disabled={logoutMutation.isPending}
               >
                 <LogOut className="mr-2 size-4" />
@@ -137,6 +139,21 @@ export function AppHeader() {
           </DropdownMenu>
         )}
       </div>
+
+      {/* Shadcn Alert Dialog confirmation for logout */}
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        onOpenChange={setShowLogoutConfirm}
+        title="Log out"
+        description="Are you sure you want to log out of your account?"
+        confirmLabel="Log out"
+        cancelLabel="Cancel"
+        destructive
+        isPending={logoutMutation.isPending}
+        onConfirm={async () => {
+          await logoutMutation.mutateAsync();
+        }}
+      />
     </header>
   );
 }

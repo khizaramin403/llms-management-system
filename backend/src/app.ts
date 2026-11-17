@@ -67,9 +67,10 @@ export function createApp(): Express {
   // 9. Global API Rate Limiting (300 req / 15 min)
   app.use(apiLimiter);
 
-  // 10. Public Health check endpoint & API v1 routes
+  // 10. Public Health check endpoint & API v1 routes (with direct prefix alias for Postman)
   app.get("/health", healthCheckHandler);
   app.use("/api/v1", apiRouter);
+  app.use(apiRouter);
 
   // 11. 404 handler for unmatched routes
   app.use(notFound);

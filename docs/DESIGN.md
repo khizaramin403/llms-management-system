@@ -1,3 +1,4 @@
+
 # Design System Specification
 
 Goal: a modern, sleek, minimal dashboard. Compact (not bulky), calm, high readability, lots of whitespace, subtle borders instead of heavy shadows. Built only with shadcn/ui components and Tailwind design tokens.
