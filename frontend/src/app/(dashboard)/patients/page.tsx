@@ -21,10 +21,12 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { ROLES } from "@/constants/roles";
+import { can } from "@/constants/permissions";
 import { useAuthStore } from "@/stores/auth.store";
 import { useTableParams } from "@/hooks/use-table-params";
 import { usePatients, useDeactivatePatient } from "@/features/patients/hooks";
 import { PatientsTable } from "@/features/patients/components/PatientsTable";
+import { PatientFormDialog } from "@/features/patients/components/PatientFormDialog";
 import type { Patient } from "@/features/patients/types";
 
 /**
@@ -33,14 +35,13 @@ import type { Patient } from "@/features/patients/types";
  * 2. Next-page prefetch and keepPreviousData ensure seamless, unfragmented pagination.
  * 3. Search is debounced 300 ms and stored directly in the URL query string.
  * 4. Actions and buttons are strictly guarded by role:
- *    - Register button: Lab Admin and Receptionist only (inert in this step).
- *    - Edit row action: Lab Admin and Receptionist only (inert in this step).
+ *    - Register button: rendered only when can(userRole, "patient:create").
+ *    - Edit row action: rendered for roles with edit capability.
  *    - Deactivate row action: Lab Admin only, guarded by ConfirmDialog.
  */
 function PatientsContent() {
   const userRole = useAuthStore((state) => state.user?.role);
-  const canRegister =
-    userRole === ROLES.LAB_ADMIN || userRole === ROLES.RECEPTIONIST;
+  const canRegister = can(userRole, "patient:create");
 
   const {
     page,
@@ -74,6 +75,20 @@ function PatientsContent() {
     gender: gender || undefined,
     sort: sort || undefined,
   });
+
+  // Create / Edit modal state
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  const handleRegisterClick = useCallback(() => {
+    setSelectedPatient(null);
+    setFormDialogOpen(true);
+  }, []);
+
+  const handleEditClick = useCallback((patient: Patient) => {
+    setSelectedPatient(patient);
+    setFormDialogOpen(true);
+  }, []);
 
   // Deactivation confirmation modal state (Lab Admin only)
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
@@ -120,7 +135,7 @@ function PatientsContent() {
         description="Manage patient records, demographics, and registration details"
         actions={
           canRegister ? (
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={handleRegisterClick}>
               <Plus className="size-4" />
               Register patient
             </Button>
@@ -183,6 +198,7 @@ function PatientsContent() {
         onRetry={() => refetch()}
         sorting={sorting}
         onSortingChange={onSortingChange}
+        onEdit={handleEditClick}
         onDeactivate={handleDeactivateClick}
         pagination={
           <DataTablePagination
@@ -213,7 +229,11 @@ function PatientsContent() {
               description="No patients have been registered in your laboratory yet."
               action={
                 canRegister ? (
-                  <Button size="sm" className="gap-2">
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={handleRegisterClick}
+                  >
                     <Plus className="size-4" />
                     Register patient
                   </Button>
@@ -222,6 +242,13 @@ function PatientsContent() {
             />
           )
         }
+      />
+
+      {/* Patient Create / Edit Dialog */}
+      <PatientFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        patient={selectedPatient}
       />
 
       {/* Soft Delete / Deactivate Confirmation Dialog (Lab Admin only) */}
