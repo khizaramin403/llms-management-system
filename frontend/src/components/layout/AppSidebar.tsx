@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import {
   Sidebar,
@@ -29,10 +29,18 @@ import { cn } from "@/lib/utils";
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
   const tenantName = useAuthStore((s) => s.user?.tenantName);
 
   const navItems = useMemo(() => getNavigationForRole(role), [role]);
+
+  // Warm up and prefetch all navigation routes in the background upon mounting
+  useEffect(() => {
+    navItems.forEach((item) => {
+      router.prefetch(item.href);
+    });
+  }, [navItems, router]);
 
   const labName =
     tenantName ||
@@ -77,11 +85,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               return (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
-                    render={<Link href={item.href} />}
+                    render={<Link href={item.href} prefetch={true} />}
                     isActive={active}
                     tooltip={item.title}
+                    onMouseEnter={() => router.prefetch(item.href)}
                     className={cn(
-                      "relative transition-colors",
+                      "relative transition-colors cursor-pointer",
                       active &&
                       "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     )}
