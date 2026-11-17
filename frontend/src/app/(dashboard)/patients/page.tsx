@@ -255,7 +255,7 @@ function PatientsContent() {
                 canRegister ? (
                   <Button
                     size="sm"
-                    className="gap-2"
+                    className="gap-2 hover:cursor-pointer"
                     onClick={handleRegisterClick}
                   >
                     <Plus className="size-4" />
