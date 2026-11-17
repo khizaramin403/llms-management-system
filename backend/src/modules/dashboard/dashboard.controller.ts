@@ -12,7 +12,8 @@ export class DashboardController {
    */
   static async getStats(req: Request, res: Response): Promise<void> {
     res.setHeader("Cache-Control", "private, max-age=30");
-    const stats = await DashboardService.getStats(req.user!);
+    const { days } = req.query;
+    const stats = await DashboardService.getStats(req.user!, days as string | undefined);
     sendOk(res, stats);
   }
 }

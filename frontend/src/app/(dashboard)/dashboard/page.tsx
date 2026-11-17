@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import {
   Building2,
@@ -102,7 +103,8 @@ const SuperAdminCharts = dynamic(
  */
 export default function DashboardPage() {
   const role = useUserRole();
-  const { data, isLoading, isError, error, refetch } = useDashboardStats();
+  const [days, setDays] = useState<number>(7);
+  const { data, isLoading, isError, error, refetch } = useDashboardStats({ days });
 
   const renderStatCards = () => {
     if (isLoading) {
@@ -290,7 +292,9 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2">
                 <RegistrationsBarChart
-                  data={stats?.charts?.registrationsLast7Days}
+                  data={stats?.charts?.registrations ?? stats?.charts?.registrationsLast7Days}
+                  days={days}
+                  onDaysChange={setDays}
                   isLoading={isLoading}
                   isError={isError}
                   onRetry={() => refetch()}
@@ -323,9 +327,11 @@ export default function DashboardPage() {
         const stats = data as ReceptionistDashboardStats | undefined;
         return (
           <div className="space-y-6">
-            {/* Receptionist chart row: registrationsLast7Days */}
+            {/* Receptionist chart row: registrations */}
             <RegistrationsBarChart
-              data={stats?.charts?.registrationsLast7Days}
+              data={stats?.charts?.registrations ?? stats?.charts?.registrationsLast7Days}
+              days={days}
+              onDaysChange={setDays}
               isLoading={isLoading}
               isError={isError}
               onRetry={() => refetch()}

@@ -35,6 +35,7 @@ export interface LabAdminDashboardStats {
     totalStaff: number;
   };
   charts: {
+    registrations?: Array<{ date: string; count: number }>;
     registrationsLast7Days: Array<{ date: string; count: number }>;
     genderBreakdown: Array<{ gender: string; count: number }>;
   };
@@ -47,6 +48,7 @@ export interface DoctorDashboardStats {
     patientsToday: number;
   };
   charts: {
+    registrations?: Array<{ date: string; count: number }>;
     registrationsLast7Days: Array<{ date: string; count: number }>;
     genderBreakdown: Array<{ gender: string; count: number }>;
   };
@@ -59,6 +61,7 @@ export interface ReceptionistDashboardStats {
     totalPatients: number;
   };
   charts: {
+    registrations?: Array<{ date: string; count: number }>;
     registrationsLast7Days: Array<{ date: string; count: number }>;
   };
   recentPatients: RecentPatientItem[];
@@ -89,16 +92,16 @@ export function getStartOfTodayUTC(): Date {
 }
 
 /**
- * Generates an array of exactly 7 chronological YYYY-MM-DD strings ending with today.
+ * Generates an array of exactly N chronological YYYY-MM-DD strings ending with today.
  */
-export function getLast7DaysUTC(): string[] {
+export function getLastNDaysUTC(n: number): string[] {
   const days: string[] = [];
   const now = new Date();
   const utcYear = now.getUTCFullYear();
   const utcMonth = now.getUTCMonth();
   const utcDate = now.getUTCDate();
 
-  for (let i = 6; i >= 0; i--) {
+  for (let i = n - 1; i >= 0; i--) {
     const d = new Date(Date.UTC(utcYear, utcMonth, utcDate - i));
     days.push(d.toISOString().slice(0, 10));
   }
@@ -106,21 +109,35 @@ export function getLast7DaysUTC(): string[] {
 }
 
 /**
- * Returns UTC timestamp for start of 6 days ago (7-day window start).
+ * Returns UTC timestamp for start of N-1 days ago (N-day window start at 00:00:00.000Z).
  */
-export function getStartOf7DaysAgoUTC(): Date {
+export function getStartOfNDaysAgoUTC(n: number): Date {
   const now = new Date();
   return new Date(
     Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
-      now.getUTCDate() - 6,
+      now.getUTCDate() - (n - 1),
       0,
       0,
       0,
       0
     )
   );
+}
+
+/**
+ * Generates an array of exactly 7 chronological YYYY-MM-DD strings ending with today.
+ */
+export function getLast7DaysUTC(): string[] {
+  return getLastNDaysUTC(7);
+}
+
+/**
+ * Returns UTC timestamp for start of 6 days ago (7-day window start).
+ */
+export function getStartOf7DaysAgoUTC(): Date {
+  return getStartOfNDaysAgoUTC(7);
 }
 
 /**
@@ -159,16 +176,22 @@ export class DashboardService {
   /**
    * Dispatches stats computation based on caller's role.
    */
-  static async getStats(currentUser: AuthUser): Promise<DashboardStats> {
+  static async getStats(
+    currentUser: AuthUser,
+    daysParam?: number | string
+  ): Promise<DashboardStats> {
+    const parsedDays = Number(daysParam);
+    const days = [7, 30, 90].includes(parsedDays) ? parsedDays : 7;
+
     switch (currentUser.role) {
       case ROLES.SUPER_ADMIN:
         return this.getSuperAdminStats();
       case ROLES.LAB_ADMIN:
-        return this.getLabAdminStats(currentUser);
+        return this.getLabAdminStats(currentUser, days);
       case ROLES.DOCTOR:
-        return this.getDoctorStats(currentUser);
+        return this.getDoctorStats(currentUser, days);
       case ROLES.RECEPTIONIST:
-        return this.getReceptionistStats(currentUser);
+        return this.getReceptionistStats(currentUser, days);
       default:
         throw ApiError.forbidden("Access denied: invalid role for dashboard");
     }
@@ -241,11 +264,12 @@ export class DashboardService {
   /**
    * LAB_ADMIN stats:
    * - cards: { totalPatients, patientsToday, totalStaff }
-   * - charts: { registrationsLast7Days (7 days), genderBreakdown }
+   * - charts: { registrationsLast7Days (or N days), genderBreakdown }
    * - recentPatients: up to 5 patients
    */
   private static async getLabAdminStats(
-    currentUser: AuthUser
+    currentUser: AuthUser,
+    days: number = 7
   ): Promise<LabAdminDashboardStats> {
     if (!currentUser.tenantId) {
       throw ApiError.forbidden("User is not assigned to any laboratory");
@@ -253,8 +277,8 @@ export class DashboardService {
 
     const tenantId = new mongoose.Types.ObjectId(currentUser.tenantId);
     const startOfToday = getStartOfTodayUTC();
-    const startOf7DaysAgo = getStartOf7DaysAgoUTC();
-    const last7Days = getLast7DaysUTC();
+    const startOfPeriodAgo = getStartOfNDaysAgoUTC(days);
+    const periodDays = getLastNDaysUTC(days);
 
     const [
       totalPatients,
@@ -276,7 +300,7 @@ export class DashboardService {
           $match: {
             tenantId,
             isActive: true,
-            createdAt: { $gte: startOf7DaysAgo },
+            createdAt: { $gte: startOfPeriodAgo },
           },
         },
         {
@@ -309,7 +333,7 @@ export class DashboardService {
     ]);
 
     const regCountMap = new Map(registrationsAgg.map((r) => [r._id, r.count]));
-    const registrationsLast7Days = last7Days.map((date) => ({
+    const registrations = periodDays.map((date) => ({
       date,
       count: regCountMap.get(date) ?? 0,
     }));
@@ -337,7 +361,8 @@ export class DashboardService {
         totalStaff,
       },
       charts: {
-        registrationsLast7Days,
+        registrations,
+        registrationsLast7Days: registrations,
         genderBreakdown,
       },
       recentPatients,
@@ -347,11 +372,12 @@ export class DashboardService {
   /**
    * DOCTOR stats:
    * - cards: { totalPatients, patientsToday }
-   * - charts: { registrationsLast7Days (7 days), genderBreakdown }
+   * - charts: { registrationsLast7Days (or N days), genderBreakdown }
    * - recentPatients: up to 5 patients
    */
   private static async getDoctorStats(
-    currentUser: AuthUser
+    currentUser: AuthUser,
+    days: number = 7
   ): Promise<DoctorDashboardStats> {
     if (!currentUser.tenantId) {
       throw ApiError.forbidden("User is not assigned to any laboratory");
@@ -359,8 +385,8 @@ export class DashboardService {
 
     const tenantId = new mongoose.Types.ObjectId(currentUser.tenantId);
     const startOfToday = getStartOfTodayUTC();
-    const startOf7DaysAgo = getStartOf7DaysAgoUTC();
-    const last7Days = getLast7DaysUTC();
+    const startOfPeriodAgo = getStartOfNDaysAgoUTC(days);
+    const periodDays = getLastNDaysUTC(days);
 
     const [
       totalPatients,
@@ -380,7 +406,7 @@ export class DashboardService {
           $match: {
             tenantId,
             isActive: true,
-            createdAt: { $gte: startOf7DaysAgo },
+            createdAt: { $gte: startOfPeriodAgo },
           },
         },
         {
@@ -413,7 +439,7 @@ export class DashboardService {
     ]);
 
     const regCountMap = new Map(registrationsAgg.map((r) => [r._id, r.count]));
-    const registrationsLast7Days = last7Days.map((date) => ({
+    const registrations = periodDays.map((date) => ({
       date,
       count: regCountMap.get(date) ?? 0,
     }));
@@ -440,7 +466,8 @@ export class DashboardService {
         patientsToday,
       },
       charts: {
-        registrationsLast7Days,
+        registrations,
+        registrationsLast7Days: registrations,
         genderBreakdown,
       },
       recentPatients,
@@ -450,11 +477,12 @@ export class DashboardService {
   /**
    * RECEPTIONIST stats:
    * - cards: { registeredToday, totalPatients }
-   * - charts: { registrationsLast7Days (7 days) }
+   * - charts: { registrationsLast7Days (or N days) }
    * - recentPatients: up to 5 patients
    */
   private static async getReceptionistStats(
-    currentUser: AuthUser
+    currentUser: AuthUser,
+    days: number = 7
   ): Promise<ReceptionistDashboardStats> {
     if (!currentUser.tenantId) {
       throw ApiError.forbidden("User is not assigned to any laboratory");
@@ -462,8 +490,8 @@ export class DashboardService {
 
     const tenantId = new mongoose.Types.ObjectId(currentUser.tenantId);
     const startOfToday = getStartOfTodayUTC();
-    const startOf7DaysAgo = getStartOf7DaysAgoUTC();
-    const last7Days = getLast7DaysUTC();
+    const startOfPeriodAgo = getStartOfNDaysAgoUTC(days);
+    const periodDays = getLastNDaysUTC(days);
 
     const [registeredToday, totalPatients, registrationsAgg, recentDocs] =
       await Promise.all([
@@ -479,7 +507,7 @@ export class DashboardService {
             $match: {
               tenantId,
               isActive: true,
-              createdAt: { $gte: startOf7DaysAgo },
+              createdAt: { $gte: startOfPeriodAgo },
             },
           },
           {
@@ -498,7 +526,7 @@ export class DashboardService {
       ]);
 
     const regCountMap = new Map(registrationsAgg.map((r) => [r._id, r.count]));
-    const registrationsLast7Days = last7Days.map((date) => ({
+    const registrations = periodDays.map((date) => ({
       date,
       count: regCountMap.get(date) ?? 0,
     }));
@@ -519,7 +547,8 @@ export class DashboardService {
         totalPatients,
       },
       charts: {
-        registrationsLast7Days,
+        registrations,
+        registrationsLast7Days: registrations,
       },
       recentPatients,
     };

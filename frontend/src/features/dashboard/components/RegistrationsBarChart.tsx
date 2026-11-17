@@ -14,11 +14,20 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ChartCard } from "@/components/shared/ChartCard";
 import { formatDate } from "@/lib/format";
 
 export interface RegistrationsBarChartProps {
   data?: Array<{ date: string; count: number }>;
+  days?: number;
+  onDaysChange?: (days: number) => void;
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
@@ -45,6 +54,8 @@ const chartConfig: ChartConfig = {
 export const RegistrationsBarChart = React.memo(
   function RegistrationsBarChart({
     data = [],
+    days = 7,
+    onDaysChange,
     isLoading = false,
     isError = false,
     onRetry,
@@ -54,23 +65,47 @@ export const RegistrationsBarChart = React.memo(
       !isLoading &&
       (!data || data.length === 0 || data.every((d) => d.count === 0));
 
+    const isWeek = days <= 7;
     const formattedData = React.useMemo(() => {
       return data.map((item) => ({
         ...item,
         displayDate: formatDate(item.date, "EEE, MMM d"),
-        shortDate: formatDate(item.date, "EEE"),
+        tickDate: isWeek
+          ? formatDate(item.date, "EEE")
+          : formatDate(item.date, "MMM d"),
       }));
-    }, [data]);
+    }, [data, isWeek]);
 
     return (
       <ChartCard
         title="Registrations"
-        description="Patient registrations over the last 7 days"
-        period="Last 7 days"
+        description={`Patient registrations over the last ${days} days`}
+        action={
+          onDaysChange ? (
+            <Select
+              value={String(days)}
+              onValueChange={(val) => onDaysChange(Number(val))}
+            >
+              <SelectTrigger
+                size="sm"
+                className="h-7 w-[120px] text-xs font-medium cursor-pointer"
+                aria-label="Filter registrations by period"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 90 days</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : undefined
+        }
+        period={onDaysChange ? undefined : `Last ${days} days`}
         isLoading={isLoading}
         isEmpty={isEmpty}
         emptyTitle="No registrations"
-        emptyDescription="No patient registrations recorded in the last 7 days."
+        emptyDescription={`No patient registrations recorded in the last ${days} days.`}
         isError={isError}
         onRetry={onRetry}
         height={280}
@@ -87,10 +122,11 @@ export const RegistrationsBarChart = React.memo(
               className="stroke-border/40"
             />
             <XAxis
-              dataKey="shortDate"
+              dataKey="tickDate"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
+              interval={days > 30 ? 9 : days > 7 ? 3 : 0}
               className="text-xs text-muted-foreground select-none"
             />
             <YAxis
@@ -116,7 +152,7 @@ export const RegistrationsBarChart = React.memo(
               dataKey="count"
               fill="var(--color-chart-1)"
               radius={[4, 4, 0, 0]}
-              maxBarSize={48}
+              maxBarSize={days > 30 ? 8 : days > 7 ? 18 : 48}
             />
           </BarChart>
         </ChartContainer>

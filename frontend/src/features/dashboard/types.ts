@@ -27,6 +27,7 @@ export interface LabAdminDashboardStats {
     totalStaff: number;
   };
   charts: {
+    registrations?: Array<{ date: string; count: number }>;
     registrationsLast7Days: Array<{ date: string; count: number }>;
     genderBreakdown: Array<{ gender: string; count: number }>;
   };
@@ -39,6 +40,7 @@ export interface DoctorDashboardStats {
     patientsToday: number;
   };
   charts: {
+    registrations?: Array<{ date: string; count: number }>;
     registrationsLast7Days: Array<{ date: string; count: number }>;
     genderBreakdown: Array<{ gender: string; count: number }>;
   };
@@ -51,6 +53,7 @@ export interface ReceptionistDashboardStats {
     totalPatients: number;
   };
   charts: {
+    registrations?: Array<{ date: string; count: number }>;
     registrationsLast7Days: Array<{ date: string; count: number }>;
   };
   recentPatients: RecentPatientItem[];
