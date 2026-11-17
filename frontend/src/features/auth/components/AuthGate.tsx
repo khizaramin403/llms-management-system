@@ -113,7 +113,12 @@ export function AuthGate({ children }: AuthGateProps) {
   useEffect(() => {
     if (isError || (!isLoading && !data?.user && !user)) {
       setUser(null);
-      router.replace("/login");
+      // Explicitly clear the session hint cookie so proxy middleware doesn't bounce /login back to /dashboard
+      if (typeof document !== "undefined") {
+        document.cookie =
+          "lms_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+      }
+      router.replace("/login?expired=1");
     }
   }, [isError, isLoading, data, user, setUser, router]);
 

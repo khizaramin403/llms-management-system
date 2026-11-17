@@ -66,6 +66,9 @@ function handleSessionExpired(): void {
   if (typeof window !== "undefined") {
     try {
       localStorage.removeItem("auth-storage");
+      // Explicitly clear the session hint cookie so proxy middleware doesn't bounce /login back to /dashboard
+      document.cookie =
+        "lms_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     } catch {
       // Ignore storage access errors
     }
@@ -73,7 +76,7 @@ function handleSessionExpired(): void {
     if (window.location.pathname !== "/login") {
       // Hard redirect to login to reset all application state on session expiry
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = "/login";
+      window.location.href = "/login?expired=1";
     }
   }
 }

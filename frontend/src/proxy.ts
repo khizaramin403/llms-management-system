@@ -28,8 +28,18 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
 
-  // If user visits /login with an active session hint, redirect to /dashboard
+  // If user visits /login
   if (pathname === "/login") {
+    // If explicitly marked as expired or logged out, clear cookie and allow login page
+    if (
+      request.nextUrl.searchParams.has("expired") ||
+      request.nextUrl.searchParams.has("logout")
+    ) {
+      const response = NextResponse.next();
+      response.cookies.delete(SESSION_COOKIE);
+      return response;
+    }
+
     if (hasSession) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
