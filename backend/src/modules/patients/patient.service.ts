@@ -21,6 +21,8 @@ export interface PatientListItem {
   phone: string;
   gender: Gender;
   dateOfBirth: Date;
+  address?: string | null;
+  isActive: boolean;
   createdAt: Date;
 }
 
@@ -160,6 +162,8 @@ export class PatientService {
       phone: p.phone,
       gender: p.gender,
       dateOfBirth: p.dateOfBirth,
+      address: p.address ?? null,
+      isActive: p.isActive ?? true,
       createdAt: p.createdAt,
     }));
 

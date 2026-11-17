@@ -92,14 +92,24 @@ export function usePatient<T = Patient>(
       const cached = queryClient.getQueryData<Patient>(
         queryKeys.patients.detail(id)
       );
-      if (cached) return cached;
+      if (cached) {
+        return {
+          ...cached,
+          isActive: cached.isActive ?? true,
+        };
+      }
 
       const listQueries = queryClient.getQueriesData<Paginated<Patient>>({
         queryKey: queryKeys.patients.all,
       });
       for (const [, listData] of listQueries) {
         const found = listData?.data?.find((p) => p.id === id);
-        if (found) return found;
+        if (found) {
+          return {
+            ...found,
+            isActive: found.isActive ?? true,
+          };
+        }
       }
       return undefined;
     },

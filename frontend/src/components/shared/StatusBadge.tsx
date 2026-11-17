@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export interface StatusBadgeProps {
-  status: boolean | "ACTIVE" | "INACTIVE" | "active" | "inactive";
+  status?: boolean | "ACTIVE" | "INACTIVE" | "active" | "inactive" | null;
   className?: string;
   label?: string;
 }
@@ -12,7 +12,9 @@ export function StatusBadge({ status, className, label }: StatusBadgeProps) {
   const isActive =
     typeof status === "boolean"
       ? status
-      : status.toUpperCase() === "ACTIVE";
+      : typeof status === "string"
+        ? status.toUpperCase() === "ACTIVE"
+        : Boolean(status);
 
   const displayLabel = label ?? (isActive ? "Active" : "Inactive");
 

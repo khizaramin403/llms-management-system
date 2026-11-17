@@ -337,7 +337,7 @@ export function PatientDetails({ patientId: propPatientId }: PatientDetailsProps
                 <span className="font-mono text-sm text-muted-foreground tabular-nums">
                   {patient.patientCode}
                 </span>
-                <StatusBadge status={patient.isActive} />
+                <StatusBadge status={patient.isActive ?? true} />
               </div>
             </div>
           </div>
