@@ -17,6 +17,7 @@ import type { User, UserScope } from "../types";
 
 export interface UserColumnsOptions {
   scope?: UserScope;
+  currentUserId?: string;
   onEdit?: (user: User) => void;
   onToggleStatus?: (user: User) => void;
 }
@@ -98,7 +99,10 @@ export function getUserColumns(
       enableSorting: false,
       cell: ({ row }) => {
         const user = row.original;
-        const isSelfActive = user.isActive;
+        const isSelf = Boolean(
+          options?.currentUserId && options.currentUserId === user.id
+        );
+        const isActive = user.isActive;
 
         return (
           <div className="flex justify-end">
@@ -117,23 +121,29 @@ export function getUserColumns(
                   <Pencil className="mr-2 size-4" />
                   {scope === "lab" ? "Edit staff" : "Edit user"}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {isSelfActive ? (
-                  <DropdownMenuItem
-                    onClick={() => options?.onToggleStatus?.(user)}
-                    className="text-destructive focus:text-destructive cursor-pointer"
-                  >
-                    <PowerOff className="mr-2 size-4" />
-                    Deactivate
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={() => options?.onToggleStatus?.(user)}
-                    className="text-success focus:text-success cursor-pointer"
-                  >
-                    <Power className="mr-2 size-4" />
-                    Activate
-                  </DropdownMenuItem>
+
+                {/* A user cannot deactivate themselves, so hide that action for the current user */}
+                {!isSelf && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {isActive ? (
+                      <DropdownMenuItem
+                        onClick={() => options?.onToggleStatus?.(user)}
+                        className="text-destructive focus:text-destructive cursor-pointer"
+                      >
+                        <PowerOff className="mr-2 size-4" />
+                        Deactivate
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() => options?.onToggleStatus?.(user)}
+                        className="text-success focus:text-success cursor-pointer"
+                      >
+                        <Power className="mr-2 size-4" />
+                        Activate
+                      </DropdownMenuItem>
+                    )}
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

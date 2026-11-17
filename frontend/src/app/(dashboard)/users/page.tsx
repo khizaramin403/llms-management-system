@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Suspense } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { parseAsString } from "nuqs";
 import { Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -16,21 +17,28 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { RoleGuard } from "@/components/shared/RoleGuard";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { ROLES } from "@/constants/roles";
+import { useAuthStore } from "@/stores/auth.store";
 import { useTableParams } from "@/hooks/use-table-params";
 import { useLabs } from "@/features/labs/hooks";
-import { useUsers } from "@/features/users/hooks";
+import { useUsers, useUpdateUser } from "@/features/users/hooks";
 import { UsersTable } from "@/features/users/components/UsersTable";
+import { UserFormDialog } from "@/features/users/components/UserFormDialog";
+import type { User } from "@/features/users/types";
 
 /**
  * Re-render reasoning:
  * 1. UsersContent isolates URL state subscriptions (useTableParams) and TanStack Query (useUsers).
- * 2. Filter changes immediately write to URL query params and trigger shallow updates.
+ * 2. Form and confirmation dialog states are isolated locally to modal triggers.
  * 3. Scope "all" renders the full system-wide table including the Lab organization column.
+ * 4. Current user self-protection prevents self-deactivation.
  */
 function UsersContent() {
+  const currentUserId = useAuthStore((state) => state.user?.id);
+
   const {
     page,
     limit,
@@ -71,6 +79,64 @@ function UsersContent() {
     sort: sort || undefined,
   });
 
+  // Modal dialog states
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusUser, setStatusUser] = useState<User | null>(null);
+
+  const updateUserMutation = useUpdateUser();
+
+  const handleAddUser = useCallback(() => {
+    setSelectedUser(null);
+    setFormDialogOpen(true);
+  }, []);
+
+  const handleEditUser = useCallback((user: User) => {
+    setSelectedUser(user);
+    setFormDialogOpen(true);
+  }, []);
+
+  const handleToggleStatusClick = useCallback(
+    (user: User) => {
+      // Disallow self deactivation
+      if (currentUserId && user.id === currentUserId) {
+        toast.error("You cannot deactivate your own account");
+        return;
+      }
+      setStatusUser(user);
+      setStatusDialogOpen(true);
+    },
+    [currentUserId]
+  );
+
+  const handleConfirmToggleStatus = async () => {
+    if (!statusUser) return;
+    const isDeactivating = statusUser.isActive;
+
+    updateUserMutation.mutate(
+      {
+        id: statusUser.id,
+        data: { isActive: !isDeactivating },
+      },
+      {
+        onSuccess: (updated) => {
+          toast.success(
+            isDeactivating
+              ? `User "${updated.name}" deactivated successfully`
+              : `User "${updated.name}" activated successfully`
+          );
+          setStatusDialogOpen(false);
+          setStatusUser(null);
+        },
+        onError: (err) => {
+          toast.error(err.message || "Failed to update user status");
+        },
+      }
+    );
+  };
+
   const users = data?.data ?? [];
   const meta = data?.meta ?? {
     total: 0,
@@ -86,7 +152,7 @@ function UsersContent() {
         title="Users"
         description="Manage system user accounts and platform access"
         actions={
-          <Button className="gap-2">
+          <Button onClick={handleAddUser} className="gap-2">
             <Plus className="size-4" />
             Add user
           </Button>
@@ -171,6 +237,8 @@ function UsersContent() {
         onRetry={() => refetch()}
         sorting={sorting}
         onSortingChange={onSortingChange}
+        onEdit={handleEditUser}
+        onToggleStatus={handleToggleStatusClick}
         pagination={
           <DataTablePagination
             page={page}
@@ -199,7 +267,7 @@ function UsersContent() {
               title="No users found"
               description="No user accounts have been registered yet."
               action={
-                <Button size="sm" className="gap-2">
+                <Button size="sm" onClick={handleAddUser} className="gap-2">
                   <Plus className="size-4" />
                   Add user
                 </Button>
@@ -207,6 +275,42 @@ function UsersContent() {
             />
           )
         }
+      />
+
+      {/* User Form Dialog (Create and Edit) */}
+      <UserFormDialog
+        open={formDialogOpen}
+        onOpenChange={(open) => {
+          setFormDialogOpen(open);
+          if (!open) setSelectedUser(null);
+        }}
+        user={selectedUser}
+        scope="all"
+      />
+
+      {/* Activate / Deactivate Confirmation Dialog */}
+      <ConfirmDialog
+        open={statusDialogOpen}
+        onOpenChange={(open) => {
+          setStatusDialogOpen(open);
+          if (!open) setStatusUser(null);
+        }}
+        title={
+          statusUser?.isActive
+            ? `Deactivate ${statusUser.name}?`
+            : `Activate ${statusUser?.name}?`
+        }
+        description={
+          statusUser?.isActive
+            ? "Deactivating this user will immediately revoke their access to the system. You can reactivate them at any time."
+            : "Activating this user will restore their access to the system."
+        }
+        confirmLabel={
+          statusUser?.isActive ? "Deactivate User" : "Activate User"
+        }
+        destructive={Boolean(statusUser?.isActive)}
+        isPending={updateUserMutation.isPending}
+        onConfirm={handleConfirmToggleStatus}
       />
     </div>
   );

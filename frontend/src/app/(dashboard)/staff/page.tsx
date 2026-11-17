@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Suspense } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { parseAsString } from "nuqs";
 import { Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -16,20 +17,27 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { RoleGuard } from "@/components/shared/RoleGuard";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { ROLES } from "@/constants/roles";
+import { useAuthStore } from "@/stores/auth.store";
 import { useTableParams } from "@/hooks/use-table-params";
-import { useUsers } from "@/features/users/hooks";
+import { useUsers, useUpdateUser } from "@/features/users/hooks";
 import { UsersTable } from "@/features/users/components/UsersTable";
+import { UserFormDialog } from "@/features/users/components/UserFormDialog";
+import type { User } from "@/features/users/types";
 
 /**
  * Re-render reasoning:
  * 1. StaffContent isolates URL state subscriptions (useTableParams) and TanStack Query (useUsers).
  * 2. Scope "lab" omits the organization column since all staff belong to the current laboratory.
  * 3. Search and role filters trigger shallow URL state updates and preserve previous data during fetch.
+ * 4. Current user self-protection prevents self-deactivation.
  */
 function StaffContent() {
+  const currentUserId = useAuthStore((state) => state.user?.id);
+
   const {
     page,
     limit,
@@ -63,6 +71,64 @@ function StaffContent() {
     sort: sort || undefined,
   });
 
+  // Modal dialog states
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusUser, setStatusUser] = useState<User | null>(null);
+
+  const updateUserMutation = useUpdateUser();
+
+  const handleAddStaff = useCallback(() => {
+    setSelectedUser(null);
+    setFormDialogOpen(true);
+  }, []);
+
+  const handleEditStaff = useCallback((user: User) => {
+    setSelectedUser(user);
+    setFormDialogOpen(true);
+  }, []);
+
+  const handleToggleStatusClick = useCallback(
+    (user: User) => {
+      // Disallow self deactivation
+      if (currentUserId && user.id === currentUserId) {
+        toast.error("You cannot deactivate your own account");
+        return;
+      }
+      setStatusUser(user);
+      setStatusDialogOpen(true);
+    },
+    [currentUserId]
+  );
+
+  const handleConfirmToggleStatus = async () => {
+    if (!statusUser) return;
+    const isDeactivating = statusUser.isActive;
+
+    updateUserMutation.mutate(
+      {
+        id: statusUser.id,
+        data: { isActive: !isDeactivating },
+      },
+      {
+        onSuccess: (updated) => {
+          toast.success(
+            isDeactivating
+              ? `Staff member "${updated.name}" deactivated successfully`
+              : `Staff member "${updated.name}" activated successfully`
+          );
+          setStatusDialogOpen(false);
+          setStatusUser(null);
+        },
+        onError: (err) => {
+          toast.error(err.message || "Failed to update staff status");
+        },
+      }
+    );
+  };
+
   const staff = data?.data ?? [];
   const meta = data?.meta ?? {
     total: 0,
@@ -78,7 +144,7 @@ function StaffContent() {
         title="Staff"
         description="Manage doctors and receptionists for your laboratory"
         actions={
-          <Button className="gap-2">
+          <Button onClick={handleAddStaff} className="gap-2">
             <Plus className="size-4" />
             Add staff
           </Button>
@@ -140,6 +206,8 @@ function StaffContent() {
         onRetry={() => refetch()}
         sorting={sorting}
         onSortingChange={onSortingChange}
+        onEdit={handleEditStaff}
+        onToggleStatus={handleToggleStatusClick}
         pagination={
           <DataTablePagination
             page={page}
@@ -168,7 +236,7 @@ function StaffContent() {
               title="No staff found"
               description="No staff accounts have been added to your laboratory yet."
               action={
-                <Button size="sm" className="gap-2">
+                <Button size="sm" onClick={handleAddStaff} className="gap-2">
                   <Plus className="size-4" />
                   Add staff
                 </Button>
@@ -176,6 +244,42 @@ function StaffContent() {
             />
           )
         }
+      />
+
+      {/* Staff Form Dialog (Create and Edit) */}
+      <UserFormDialog
+        open={formDialogOpen}
+        onOpenChange={(open) => {
+          setFormDialogOpen(open);
+          if (!open) setSelectedUser(null);
+        }}
+        user={selectedUser}
+        scope="lab"
+      />
+
+      {/* Activate / Deactivate Confirmation Dialog */}
+      <ConfirmDialog
+        open={statusDialogOpen}
+        onOpenChange={(open) => {
+          setStatusDialogOpen(open);
+          if (!open) setStatusUser(null);
+        }}
+        title={
+          statusUser?.isActive
+            ? `Deactivate ${statusUser.name}?`
+            : `Activate ${statusUser?.name}?`
+        }
+        description={
+          statusUser?.isActive
+            ? "Deactivating this staff member will immediately revoke their access to the system. You can reactivate them at any time."
+            : "Activating this staff member will restore their access to the system."
+        }
+        confirmLabel={
+          statusUser?.isActive ? "Deactivate Staff" : "Activate Staff"
+        }
+        destructive={Boolean(statusUser?.isActive)}
+        isPending={updateUserMutation.isPending}
+        onConfirm={handleConfirmToggleStatus}
       />
     </div>
   );

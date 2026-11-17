@@ -3,12 +3,14 @@
 import * as React from "react";
 import { type SortingState, type OnChangeFn } from "@tanstack/react-table";
 import { DataTable } from "@/components/shared/DataTable";
+import { useAuthStore } from "@/stores/auth.store";
 import { getUserColumns } from "./UserColumns";
 import type { User, UserScope } from "../types";
 
 export interface UsersTableProps {
   data: User[];
   scope?: UserScope;
+  currentUserId?: string;
   isLoading?: boolean;
   isFetching?: boolean;
   isError?: boolean;
@@ -23,12 +25,13 @@ export interface UsersTableProps {
 
 /**
  * Re-render reasoning:
- * UsersTable memoizes columns based on scope and action callbacks.
+ * UsersTable memoizes columns based on scope, currentUserId, and action callbacks.
  * Shared by both Super Admin Users page and Lab Admin Staff page.
  */
 export function UsersTable({
   data,
   scope = "all",
+  currentUserId: propCurrentUserId,
   isLoading,
   isFetching,
   isError,
@@ -40,9 +43,12 @@ export function UsersTable({
   onEdit,
   onToggleStatus,
 }: UsersTableProps) {
+  const storeUserId = useAuthStore((s) => s.user?.id);
+  const currentUserId = propCurrentUserId ?? storeUserId;
+
   const columns = React.useMemo(() => {
-    return getUserColumns({ scope, onEdit, onToggleStatus });
-  }, [scope, onEdit, onToggleStatus]);
+    return getUserColumns({ scope, currentUserId, onEdit, onToggleStatus });
+  }, [scope, currentUserId, onEdit, onToggleStatus]);
 
   return (
     <DataTable
