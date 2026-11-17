@@ -106,14 +106,14 @@ export function SearchInput({
       />
 
       <Input
-        type="search"
+        type="text"
         value={text}
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
         aria-label={ariaLabel}
         className={cn(
-          "h-9 pl-8 text-sm bg-card transition-colors placeholder:text-muted-foreground",
+          "h-9 pl-8 text-sm bg-card transition-colors placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:appearance-none",
           // Extra right padding when both spinner and clear button are present
           isFetching && hasText
             ? "pr-14"

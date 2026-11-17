@@ -97,7 +97,7 @@ export class PatientService {
   }
 
   /**
-   * Lists active patients with pagination, anchored prefix search on name or phone,
+   * Lists active patients with pagination, search on name, patientCode, or phone,
    * gender filter, and sorting.
    */
   static async listPatients(
@@ -119,28 +119,19 @@ export class PatientService {
       filter.tenantId = new mongoose.Types.ObjectId(currentUser.tenantId);
     }
 
-    // Anchored prefix regex search on indexed name or phone fields
+    // Case-insensitive substring search on name, patientCode, or phone
     if (query.search && query.search.trim()) {
       const term = query.search.trim();
       const escaped = escapeRegex(term);
       const isDigitsOrPhone = /^[+\d\s\-()]+$/.test(term);
-      const isAlpha = /^[a-zA-Z\s'.-]+$/.test(term);
 
-      const branches: Array<Record<string, unknown>> = [];
-
-      if (!isDigitsOrPhone || isAlpha) {
-        // Name prefix match branches with casing variants to use B-tree index bounds
-        const title = escaped.charAt(0).toUpperCase() + escaped.slice(1);
-        const lower = escaped.toLowerCase();
-        const upper = escaped.toUpperCase();
-        for (const pattern of new Set([title, lower, upper])) {
-          branches.push({ name: new RegExp(`^${pattern}`) });
-        }
-      }
+      const branches: Array<Record<string, unknown>> = [
+        { name: new RegExp(escaped, "i") },
+        { patientCode: new RegExp(escaped, "i") },
+      ];
 
       if (isDigitsOrPhone) {
-        // Phone prefix match branch using index bounds
-        branches.push({ phone: new RegExp(`^${escaped}`) });
+        branches.push({ phone: new RegExp(escaped, "i") });
       }
 
       if (branches.length === 1) {
