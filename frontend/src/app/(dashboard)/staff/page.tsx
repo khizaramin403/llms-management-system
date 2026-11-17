@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense, useCallback, useState } from "react";
+import dynamic from "next/dynamic";
 import { parseAsString } from "nuqs";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -17,7 +18,6 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { RoleGuard } from "@/components/shared/RoleGuard";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { ROLES } from "@/constants/roles";
@@ -25,8 +25,22 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useTableParams } from "@/hooks/use-table-params";
 import { useUsers, useUpdateUser } from "@/features/users/hooks";
 import { UsersTable } from "@/features/users/components/UsersTable";
-import { UserFormDialog } from "@/features/users/components/UserFormDialog";
 import type { User } from "@/features/users/types";
+
+// PERFORMANCE.md section 5: Heavy libraries and dialogs use next/dynamic
+const ConfirmDialog = dynamic(
+  () =>
+    import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
+  { ssr: false }
+);
+
+const UserFormDialog = dynamic(
+  () =>
+    import("@/features/users/components/UserFormDialog").then(
+      (mod) => mod.UserFormDialog
+    ),
+  { ssr: false }
+);
 
 /**
  * Re-render reasoning:

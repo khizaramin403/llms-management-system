@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { AuthUser } from "../../types/express.d.js";
 import { ApiError } from "../../utils/ApiError.js";
 import {
+  escapeRegex,
   paginate,
   type PaginateResult,
-  prefixRegex,
 } from "../../utils/paginate.js";
 import { Counter } from "./counter.model.js";
 import { type Gender, type IPatient, Patient } from "./patient.model.js";
@@ -121,8 +121,33 @@ export class PatientService {
 
     // Anchored prefix regex search on indexed name or phone fields
     if (query.search && query.search.trim()) {
-      const regex = prefixRegex(query.search.trim());
-      filter.$or = [{ name: regex }, { phone: regex }];
+      const term = query.search.trim();
+      const escaped = escapeRegex(term);
+      const isDigitsOrPhone = /^[+\d\s\-()]+$/.test(term);
+      const isAlpha = /^[a-zA-Z\s'.-]+$/.test(term);
+
+      const branches: Array<Record<string, unknown>> = [];
+
+      if (!isDigitsOrPhone || isAlpha) {
+        // Name prefix match branches with casing variants to use B-tree index bounds
+        const title = escaped.charAt(0).toUpperCase() + escaped.slice(1);
+        const lower = escaped.toLowerCase();
+        const upper = escaped.toUpperCase();
+        for (const pattern of new Set([title, lower, upper])) {
+          branches.push({ name: new RegExp(`^${pattern}`) });
+        }
+      }
+
+      if (isDigitsOrPhone) {
+        // Phone prefix match branch using index bounds
+        branches.push({ phone: new RegExp(`^${escaped}`) });
+      }
+
+      if (branches.length === 1) {
+        Object.assign(filter, branches[0]);
+      } else if (branches.length > 1) {
+        filter.$or = branches;
+      }
     }
 
     if (query.gender) {

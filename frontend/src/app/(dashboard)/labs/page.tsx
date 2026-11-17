@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense, useCallback, useState } from "react";
+import dynamic from "next/dynamic";
 import { parseAsString } from "nuqs";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -17,15 +18,28 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { RoleGuard } from "@/components/shared/RoleGuard";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { ROLES } from "@/constants/roles";
 import { useTableParams } from "@/hooks/use-table-params";
 import { useLabs, useUpdateLab } from "@/features/labs/hooks";
 import { LabsTable } from "@/features/labs/components/LabsTable";
-import { LabFormDialog } from "@/features/labs/components/LabFormDialog";
 import type { Lab, TenantStatus } from "@/features/labs/types";
+
+// PERFORMANCE.md section 5: Heavy libraries and dialogs use next/dynamic
+const ConfirmDialog = dynamic(
+  () =>
+    import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
+  { ssr: false }
+);
+
+const LabFormDialog = dynamic(
+  () =>
+    import("@/features/labs/components/LabFormDialog").then(
+      (mod) => mod.LabFormDialog
+    ),
+  { ssr: false }
+);
 
 /**
  * Re-render reasoning:

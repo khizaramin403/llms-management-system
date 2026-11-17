@@ -86,11 +86,14 @@ const PatientSchema = new Schema<IPatient>(
 // Apply tenant plugin
 PatientSchema.plugin(tenantPlugin);
 
-// Compound indexes as specified in BACKEND.md section 4
+// Compound indexes as specified in BACKEND.md section 4 and PERFORMANCE.md section 2
 PatientSchema.index({ tenantId: 1, patientCode: 1 }, { unique: true });
 PatientSchema.index({ tenantId: 1, createdAt: -1 });
 PatientSchema.index({ tenantId: 1, name: 1 });
 PatientSchema.index({ tenantId: 1, phone: 1 });
+PatientSchema.index({ tenantId: 1, isActive: 1, createdAt: -1 });
+PatientSchema.index({ tenantId: 1, isActive: 1, name: 1 });
+PatientSchema.index({ tenantId: 1, isActive: 1, phone: 1 });
 
 export const Patient: Model<IPatient> =
   mongoose.models.Patient ||

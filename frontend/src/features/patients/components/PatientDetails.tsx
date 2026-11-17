@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -34,7 +35,6 @@ import {
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { can } from "@/constants/permissions";
 import { useAuthStore } from "@/stores/auth.store";
 import { formatDate } from "@/lib/format";
@@ -42,8 +42,20 @@ import { cn } from "@/lib/utils";
 import { ApiError } from "@/types/api";
 import { usePatient, useDeactivatePatient } from "../hooks";
 import { calculateAge } from "./PatientColumns";
-import { PatientFormDialog } from "./PatientFormDialog";
 import type { Gender } from "../types";
+
+// PERFORMANCE.md section 5: Heavy libraries and dialogs use next/dynamic
+const ConfirmDialog = dynamic(
+  () =>
+    import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
+  { ssr: false }
+);
+
+const PatientFormDialog = dynamic(
+  () =>
+    import("./PatientFormDialog").then((mod) => mod.PatientFormDialog),
+  { ssr: false }
+);
 
 export interface PatientDetailsProps {
   patientId?: string;

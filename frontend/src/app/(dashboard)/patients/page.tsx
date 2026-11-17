@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense, useCallback, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { parseAsString } from "nuqs";
 import { Plus, X } from "lucide-react";
@@ -18,7 +19,6 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { RoleGuard } from "@/components/shared/RoleGuard";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { ROLES } from "@/constants/roles";
@@ -27,8 +27,22 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useTableParams } from "@/hooks/use-table-params";
 import { usePatients, useDeactivatePatient } from "@/features/patients/hooks";
 import { PatientsTable } from "@/features/patients/components/PatientsTable";
-import { PatientFormDialog } from "@/features/patients/components/PatientFormDialog";
 import type { Patient } from "@/features/patients/types";
+
+// PERFORMANCE.md section 5: Heavy libraries and dialogs use next/dynamic
+const ConfirmDialog = dynamic(
+  () =>
+    import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
+  { ssr: false }
+);
+
+const PatientFormDialog = dynamic(
+  () =>
+    import("@/features/patients/components/PatientFormDialog").then(
+      (mod) => mod.PatientFormDialog
+    ),
+  { ssr: false }
+);
 
 /**
  * Re-render reasoning & Performance (PERFORMANCE.md sections 4 & 5):

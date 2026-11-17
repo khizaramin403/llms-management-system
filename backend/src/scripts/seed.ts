@@ -10,14 +10,38 @@ import { User } from "../modules/users/user.model.js";
 
 const DEMO_STAFF_PASSWORD = "DemoStaffPassword123!";
 
+export interface SeedOptions {
+  patientCount?: number;
+}
+
 /**
  * Idempotent database seeder.
  * - In all environments: Seeds the platform Super Admin from environment variables.
- * - In development: Seeds "Demo Diagnostics" lab, staff accounts, and 50 realistic demo patients.
+ * - In development: Seeds "Demo Diagnostics" lab, staff accounts, and demo patients
+ *   (default 50, or custom count e.g. 100,000 via --patients=100000 or SEED_PATIENTS env).
  */
-export async function seed(): Promise<void> {
+export async function seed(options?: SeedOptions): Promise<void> {
   logger.info("Starting database seeding...");
   await connectDB();
+
+  // Resolve target patient count from options, CLI flags, or env
+  let targetCount = options?.patientCount;
+  if (!targetCount) {
+    for (const arg of process.argv.slice(2)) {
+      if (arg.startsWith("--patients=")) {
+        const val = parseInt(arg.split("=")[1], 10);
+        if (!isNaN(val)) targetCount = val;
+      } else if (arg.startsWith("--count=")) {
+        const val = parseInt(arg.split("=")[1], 10);
+        if (!isNaN(val)) targetCount = val;
+      }
+    }
+  }
+  if (!targetCount && process.env.SEED_PATIENTS) {
+    const val = parseInt(process.env.SEED_PATIENTS, 10);
+    if (!isNaN(val)) targetCount = val;
+  }
+  const resolvedTargetCount = targetCount && !isNaN(targetCount) && targetCount > 0 ? targetCount : 50;
 
   try {
     // 1. Ensure indexes for core models
@@ -120,7 +144,7 @@ export async function seed(): Promise<void> {
         }
       }
 
-      // C. Seed 50 Demo Patients
+      // C. Seed Demo Patients (default 50 or custom targetCount)
       const receptionistUser = await User.findOne({
         email: "receptionist@demodiagnostics.local",
       });
@@ -129,13 +153,14 @@ export async function seed(): Promise<void> {
         tenantId: demoLab._id,
       });
 
-      if (patientCount >= 50) {
+      if (patientCount >= resolvedTargetCount) {
         logger.info(
-          { count: patientCount },
+          { count: patientCount, target: resolvedTargetCount },
           "Demo patients already seeded for Demo Diagnostics, skipping"
         );
       } else {
-        logger.info("Seeding 50 demo patients for Demo Diagnostics...");
+        const needed = resolvedTargetCount - patientCount;
+        logger.info({ needed, target: resolvedTargetCount }, `Seeding ${needed} demo patients for Demo Diagnostics...`);
 
         const firstNames = [
           "James", "Mary", "Robert", "Patricia", "John", "Jennifer", "Michael", "Linda",
@@ -159,46 +184,55 @@ export async function seed(): Promise<void> {
 
         const genders = ["MALE", "FEMALE", "OTHER"] as const;
 
-        const demoPatients = [];
-        for (let i = 0; i < 50; i++) {
-          const firstName = firstNames[i % firstNames.length];
-          const lastName = lastNames[i % lastNames.length];
-          const gender = genders[i % genders.length];
+        const BATCH_SIZE = 5000;
+        const totalBatches = Math.ceil(needed / BATCH_SIZE);
 
-          // Spread registrations across the last 10 days
-          const daysAgo = i % 10;
-          const registrationDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+        for (let b = 0; b < totalBatches; b++) {
+          const batch = [];
+          const currentBatchSize = Math.min(BATCH_SIZE, needed - b * BATCH_SIZE);
 
-          // Realistic birth year between 1955 and 2010
-          const birthYear = 1955 + (i % 55);
-          const birthMonth = (i % 12);
-          const birthDay = 1 + (i % 28);
-          const dateOfBirth = new Date(birthYear, birthMonth, birthDay);
+          for (let i = 0; i < currentBatchSize; i++) {
+            const globalIdx = patientCount + b * BATCH_SIZE + i + 1;
+            const firstName = firstNames[globalIdx % firstNames.length];
+            const lastName = lastNames[globalIdx % lastNames.length];
+            const gender = genders[globalIdx % genders.length];
 
-          demoPatients.push({
-            tenantId: demoLab._id,
-            patientCode: `PT-${String(i + 1).padStart(4, "0")}`,
-            name: `${firstName} ${lastName}`,
-            phone: `+1-555-${String(1000 + i).padStart(4, "0")}`,
-            gender,
-            dateOfBirth,
-            address: `${100 + i} Elm Street, Suite ${i + 1}`,
-            isActive: true,
-            createdBy: receptionistUser?._id ?? null,
-            updatedBy: receptionistUser?._id ?? null,
-            createdAt: registrationDate,
-            updatedAt: registrationDate,
-          });
+            // Spread registrations across the last 30 days
+            const daysAgo = globalIdx % 30;
+            const registrationDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+
+            // Realistic birth year between 1955 and 2010
+            const birthYear = 1955 + (globalIdx % 55);
+            const birthMonth = globalIdx % 12;
+            const birthDay = 1 + (globalIdx % 28);
+            const dateOfBirth = new Date(birthYear, birthMonth, birthDay);
+
+            batch.push({
+              tenantId: demoLab._id,
+              patientCode: `PT-${String(globalIdx).padStart(resolvedTargetCount > 9999 ? 6 : 4, "0")}`,
+              name: `${firstName} ${lastName}`,
+              phone: `+1-555-${String(1000000 + (globalIdx % 9000000))}`,
+              gender,
+              dateOfBirth,
+              address: `${100 + (globalIdx % 500)} Health Avenue, Suite ${1 + (globalIdx % 50)}`,
+              isActive: true,
+              createdBy: receptionistUser?._id ?? null,
+              updatedBy: receptionistUser?._id ?? null,
+              createdAt: registrationDate,
+              updatedAt: registrationDate,
+            });
+          }
+
+          await Patient.insertMany(batch, { ordered: false });
         }
 
-        await Patient.insertMany(demoPatients);
-        logger.info("Successfully seeded 50 demo patients");
+        logger.info({ count: resolvedTargetCount }, `Successfully seeded ${needed} demo patients`);
       }
 
-      // Ensure Counter seq is at least 50 so next created patient starts at PT-0051
+      // Ensure Counter seq is at least resolvedTargetCount so next created patient starts sequentially
       await Counter.findOneAndUpdate(
         { tenantId: demoLab._id, key: "patientCode" },
-        { $max: { seq: 50 }, $setOnInsert: { tenantId: demoLab._id, key: "patientCode" } },
+        { $max: { seq: resolvedTargetCount }, $setOnInsert: { tenantId: demoLab._id, key: "patientCode" } },
         { upsert: true }
       );
     }
