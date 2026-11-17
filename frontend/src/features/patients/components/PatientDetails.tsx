@@ -437,9 +437,14 @@ export function PatientDetails({ patientId: propPatientId }: PatientDetailsProps
               <p className="text-xs font-medium text-muted-foreground">
                 Registered by
               </p>
-              <p className="text-sm font-medium text-foreground">
-                {registeredBy}
-              </p>
+              <div className="flex items-center gap-2">
+                {registeredBy !== "—" && (
+                  <UserAvatar name={registeredBy} size="sm" />
+                )}
+                <p className="text-sm font-medium text-foreground">
+                  {registeredBy}
+                </p>
+              </div>
             </div>
 
             {/* 6. Registered date */}

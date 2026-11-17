@@ -184,6 +184,7 @@ export function DataTable<TData, TValue = unknown>({
                       type="button"
                       onClick={header.column.getToggleSortingHandler()}
                       className="inline-flex items-center gap-1.5 hover:text-foreground cursor-pointer select-none transition-colors"
+                      aria-label={`Sort by ${header.column.columnDef.header}`}
                     >
                       {flexRender(
                         header.column.columnDef.header,

@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { useSyncExternalStore } from "react";
+import { LogOut, Palette as PaletteIcon } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { ThemeToggle } from "./ThemeToggle";
@@ -8,14 +9,32 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RoleBadge } from "@/components/shared/RoleBadge";
 import { useAuthStore } from "@/stores/auth.store";
 import { useLogout } from "@/features/auth/hooks";
+import { getPalette, setPalette, type Palette } from "@/lib/palette";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+function subscribeToPalette(callback: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  window.addEventListener("palette-change", callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener("palette-change", callback);
+    window.removeEventListener("storage", callback);
+  };
+}
 
 /**
  * Re-render reasoning:
@@ -27,9 +46,19 @@ export function AppHeader() {
   const user = useAuthStore((s) => s.user);
   const logoutMutation = useLogout();
 
+  const currentPalette = useSyncExternalStore(
+    subscribeToPalette,
+    getPalette,
+    () => "navy" as Palette
+  );
+
+  const handlePaletteChange = (palette: Palette) => {
+    setPalette(palette);
+  };
+
   return (
     <header className="sticky top-0 z-20 flex h-14 w-full items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:px-6">
-      <SidebarTrigger className="cursor-pointer" />
+      <SidebarTrigger className="cursor-pointer" aria-label="Toggle sidebar" />
       <Breadcrumbs />
 
       <div className="flex-1" />
@@ -63,6 +92,29 @@ export function AppHeader() {
                   <RoleBadge role={user.role} />
                 </div>
               </DropdownMenuLabel>
+
+              <DropdownMenuSeparator />
+
+              {/* Palette selection submenu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer">
+                  <PaletteIcon className="mr-2 size-4" />
+                  <span>Palette</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-36">
+                  <DropdownMenuRadioGroup
+                    value={currentPalette}
+                    onValueChange={(val) => handlePaletteChange(val as Palette)}
+                  >
+                    <DropdownMenuRadioItem value="navy" className="cursor-pointer">
+                      Navy
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="cream" className="cursor-pointer">
+                      Cream
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
 
               <DropdownMenuSeparator />
 
