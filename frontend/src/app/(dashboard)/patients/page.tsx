@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense, useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { parseAsString } from "nuqs";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -42,6 +43,14 @@ import type { Patient } from "@/features/patients/types";
 function PatientsContent() {
   const userRole = useAuthStore((state) => state.user?.role);
   const canRegister = can(userRole, "patient:create");
+  const router = useRouter();
+
+  const handleViewClick = useCallback(
+    (patient: Patient) => {
+      router.push(`/patients/${patient.id}`);
+    },
+    [router]
+  );
 
   const {
     page,
@@ -198,6 +207,7 @@ function PatientsContent() {
         onRetry={() => refetch()}
         sorting={sorting}
         onSortingChange={onSortingChange}
+        onView={handleViewClick}
         onEdit={handleEditClick}
         onDeactivate={handleDeactivateClick}
         pagination={
