@@ -351,23 +351,21 @@ function PatientFormContent({
             <FormItem>
               <FormLabel>Age</FormLabel>
               <div className="flex items-center gap-2">
-                <FormControl>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="e.g. 25"
-                    value={ageValue}
-                    onChange={(e) => handleAgeValueChange(e.target.value)}
-                    className="w-1/2"
-                  />
-                </FormControl>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="e.g. 25"
+                  value={ageValue}
+                  onChange={(e) => handleAgeValueChange(e.target.value)}
+                  className="w-24 text-center font-medium"
+                />
                 <Select
                   value={ageUnit}
                   onValueChange={(val) => {
                     if (val) handleAgeUnitChange(val as "years" | "months" | "days");
                   }}
                 >
-                  <SelectTrigger className="w-1/2">
+                  <SelectTrigger className="w-28 font-medium">
                     <SelectValue placeholder="Unit" />
                   </SelectTrigger>
                   <SelectContent>
@@ -377,7 +375,6 @@ function PatientFormContent({
                   </SelectContent>
                 </Select>
               </div>
-              <FormMessage />
             </FormItem>
 
             {/* Address (Optional) */}
