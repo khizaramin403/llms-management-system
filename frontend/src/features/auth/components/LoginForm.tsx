@@ -40,6 +40,7 @@ export interface LoginFormProps {
 export function LoginForm({ onSuccess, className }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
@@ -66,12 +67,14 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
         if (onSuccess) {
           onSuccess(data.user);
         } else {
+          setIsRedirecting(true);
           setUser(data.user);
           toast.success(`Welcome back, ${data.user.name}`);
           router.push("/dashboard");
         }
       },
       onError: (error: ApiError | Error) => {
+        setIsRedirecting(false);
         if ("errors" in error && error.errors && error.errors.length > 0) {
           error.errors.forEach((err) => {
             if (err.field === "email" || err.field === "password") {
@@ -87,7 +90,7 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
     });
   };
 
-  const isPending = loginMutation.isPending;
+  const isPending = loginMutation.isPending || isRedirecting;
 
   return (
     <Form {...form}>
@@ -172,12 +175,12 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
 
         <Button
           type="submit"
-          className="w-full"
+          className="w-full gap-2 cursor-pointer"
           disabled={isPending}
         >
           {isPending ? (
             <>
-              <Spinner className="mr-2" />
+              <Spinner className="size-4 animate-spin text-current" />
               Signing in...
             </>
           ) : (

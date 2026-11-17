@@ -104,7 +104,7 @@ const SuperAdminCharts = dynamic(
 export default function DashboardPage() {
   const role = useUserRole();
   const [days, setDays] = useState<number>(7);
-  const { data, isLoading, isError, error, refetch } = useDashboardStats({ days });
+  const { data, isLoading, isError, error, refetch, isFetching } = useDashboardStats({ days });
 
   const renderStatCards = () => {
     if (isLoading) {
@@ -295,7 +295,7 @@ export default function DashboardPage() {
                   data={stats?.charts?.registrations ?? stats?.charts?.registrationsLast7Days}
                   days={days}
                   onDaysChange={setDays}
-                  isLoading={isLoading}
+                  isLoading={isLoading || isFetching}
                   isError={isError}
                   onRetry={() => refetch()}
                 />

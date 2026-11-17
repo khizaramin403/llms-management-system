@@ -10,6 +10,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RoleBadge } from "@/components/shared/RoleBadge";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { useAuthStore } from "@/stores/auth.store";
 import { useLogout } from "@/features/auth/hooks";
 import { getPalette, setPalette, type Palette } from "@/lib/palette";
@@ -77,7 +78,11 @@ export function AppHeader() {
           title="Log out"
           aria-label="Log out"
         >
-          <LogOut className="size-4" />
+          {logoutMutation.isPending ? (
+            <Spinner className="size-4 animate-spin text-destructive" />
+          ) : (
+            <LogOut className="size-4" />
+          )}
         </Button>
 
         {user && (
@@ -135,8 +140,12 @@ export function AppHeader() {
                 onClick={() => setShowLogoutConfirm(true)}
                 disabled={logoutMutation.isPending}
               >
-                <LogOut className="mr-2 size-4" />
-                <span>Log out</span>
+                {logoutMutation.isPending ? (
+                  <Spinner className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <LogOut className="mr-2 size-4" />
+                )}
+                <span>{logoutMutation.isPending ? "Logging out..." : "Log out"}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -149,7 +158,7 @@ export function AppHeader() {
         onOpenChange={setShowLogoutConfirm}
         title="Log out"
         description="Are you sure you want to log out of your account?"
-        confirmLabel="Log out"
+        confirmLabel={logoutMutation.isPending ? "Logging out..." : "Log out"}
         cancelLabel="Cancel"
         destructive
         isPending={logoutMutation.isPending}

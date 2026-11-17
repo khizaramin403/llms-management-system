@@ -1,4 +1,5 @@
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   useMutation,
   useQuery,
@@ -54,6 +55,7 @@ export function useLogout(
   const handleLogout = () => {
     clearAuth();
     queryClient.clear();
+    toast.success("Logged out successfully");
     router.push("/login");
   };
 
