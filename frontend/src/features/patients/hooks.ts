@@ -113,6 +113,7 @@ export function usePatient<T = Patient>(
       }
       return undefined;
     },
+    initialDataUpdatedAt: 0,
     ...options,
   });
 }

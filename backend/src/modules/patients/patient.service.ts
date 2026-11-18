@@ -24,6 +24,7 @@ export interface PatientListItem {
   dateOfBirth: Date;
   address?: string | null;
   isActive: boolean;
+  createdBy?: { id: string; name: string; role: string } | string | null;
   createdAt: Date;
 }
 
@@ -163,19 +164,37 @@ export class PatientService {
       page: query.page,
       limit: query.limit,
       sort,
+      populate: { path: "createdBy", select: "name role" },
     });
 
-    const formattedData: PatientListItem[] = paginatedResult.data.map((p) => ({
-      id: p._id.toString(),
-      patientCode: p.patientCode,
-      name: p.name,
-      phone: p.phone,
-      gender: p.gender,
-      dateOfBirth: p.dateOfBirth,
-      address: p.address ?? null,
-      isActive: p.isActive ?? true,
-      createdAt: p.createdAt,
-    }));
+    const formattedData: PatientListItem[] = paginatedResult.data.map((p) => {
+      let createdByData: { id: string; name: string; role: string } | string | null = null;
+      if (p.createdBy) {
+        const cb = p.createdBy as unknown as { _id?: mongoose.Types.ObjectId; name?: string; role?: string };
+        if (typeof cb === "object" && cb.name) {
+          createdByData = {
+            id: cb._id ? cb._id.toString() : "",
+            name: cb.name,
+            role: cb.role || "",
+          };
+        } else {
+          createdByData = p.createdBy.toString();
+        }
+      }
+
+      return {
+        id: p._id.toString(),
+        patientCode: p.patientCode,
+        name: p.name,
+        phone: p.phone,
+        gender: p.gender,
+        dateOfBirth: p.dateOfBirth,
+        address: p.address ?? null,
+        isActive: p.isActive ?? true,
+        createdBy: createdByData,
+        createdAt: p.createdAt,
+      };
+    });
 
     return {
       data: formattedData,

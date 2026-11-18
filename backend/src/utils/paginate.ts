@@ -10,6 +10,7 @@ export interface PaginateOptions {
   limit?: number | string;
   sort?: Record<string, 1 | -1 | "asc" | "desc"> | string;
   select?: string | Record<string, number | boolean>;
+  populate?: unknown;
 }
 
 export interface PaginateResult<T> {
@@ -99,6 +100,10 @@ export async function paginate<T>(
 
   if (options.select) {
     query.select(options.select);
+  }
+
+  if (options.populate) {
+    query.populate(options.populate as never);
   }
 
   query.skip(skip).limit(limit).lean();
