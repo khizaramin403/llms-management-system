@@ -8,6 +8,7 @@ import {
 } from "../../utils/paginate.js";
 import { Counter } from "./counter.model.js";
 import { type Gender, type IPatient, Patient } from "./patient.model.js";
+import { User } from "../users/user.model.js";
 import type {
   CreatePatientInput,
   ListPatientsQuery,
@@ -35,7 +36,7 @@ export interface PatientResponse {
   dateOfBirth: Date;
   address?: string | null;
   isActive: boolean;
-  createdBy?: string | null;
+  createdBy?: { id: string; name: string; role: string } | string | null;
   updatedBy?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -82,6 +83,15 @@ export class PatientService {
       updatedBy: new mongoose.Types.ObjectId(currentUser.id),
     });
 
+    const userDoc = await User.findById(currentUser.id, "name role").lean();
+    const createdByData = userDoc
+      ? {
+          id: userDoc._id.toString(),
+          name: userDoc.name,
+          role: userDoc.role,
+        }
+      : null;
+
     return {
       id: patient._id.toString(),
       patientCode: patient.patientCode,
@@ -91,7 +101,7 @@ export class PatientService {
       dateOfBirth: patient.dateOfBirth,
       address: patient.address,
       isActive: patient.isActive,
-      createdBy: patient.createdBy ? patient.createdBy.toString() : null,
+      createdBy: createdByData,
       updatedBy: patient.updatedBy ? patient.updatedBy.toString() : null,
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,
@@ -184,7 +194,12 @@ export class PatientService {
       throw ApiError.notFound("Patient not found");
     }
 
-    const patient = await Patient.findById(id).lean();
+    const patient = await Patient.findById(id)
+      .populate<{ createdBy: { _id: mongoose.Types.ObjectId; name: string; role: string } | null }>(
+        "createdBy",
+        "name role"
+      )
+      .lean();
     if (!patient) {
       throw ApiError.notFound("Patient not found");
     }
@@ -197,6 +212,19 @@ export class PatientService {
       throw ApiError.notFound("Patient not found");
     }
 
+    let createdByData: { id: string; name: string; role: string } | string | null = null;
+    if (patient.createdBy) {
+      if (typeof patient.createdBy === "object" && "name" in patient.createdBy) {
+        createdByData = {
+          id: patient.createdBy._id.toString(),
+          name: patient.createdBy.name,
+          role: patient.createdBy.role,
+        };
+      } else {
+        createdByData = (patient.createdBy as unknown as string).toString();
+      }
+    }
+
     return {
       id: patient._id.toString(),
       patientCode: patient.patientCode,
@@ -206,7 +234,7 @@ export class PatientService {
       dateOfBirth: patient.dateOfBirth,
       address: patient.address,
       isActive: patient.isActive,
-      createdBy: patient.createdBy ? patient.createdBy.toString() : null,
+      createdBy: createdByData,
       updatedBy: patient.updatedBy ? patient.updatedBy.toString() : null,
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,
@@ -256,6 +284,21 @@ export class PatientService {
 
     patient.updatedBy = new mongoose.Types.ObjectId(currentUser.id);
     await patient.save();
+    await patient.populate("createdBy", "name role");
+
+    let createdByData: { id: string; name: string; role: string } | string | null = null;
+    if (patient.createdBy) {
+      const cb = patient.createdBy as unknown as { _id?: mongoose.Types.ObjectId; name?: string; role?: string };
+      if (typeof cb === "object" && cb.name) {
+        createdByData = {
+          id: cb._id ? cb._id.toString() : "",
+          name: cb.name,
+          role: cb.role || "",
+        };
+      } else {
+        createdByData = patient.createdBy.toString();
+      }
+    }
 
     return {
       id: patient._id.toString(),
@@ -266,7 +309,7 @@ export class PatientService {
       dateOfBirth: patient.dateOfBirth,
       address: patient.address,
       isActive: patient.isActive,
-      createdBy: patient.createdBy ? patient.createdBy.toString() : null,
+      createdBy: createdByData,
       updatedBy: patient.updatedBy ? patient.updatedBy.toString() : null,
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,

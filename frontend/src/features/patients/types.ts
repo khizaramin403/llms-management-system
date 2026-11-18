@@ -9,7 +9,7 @@ export interface Patient {
   dateOfBirth: string;
   address?: string | null;
   isActive: boolean;
-  createdBy?: string | null;
+  createdBy?: string | { id?: string; name?: string; role?: string } | null;
   updatedBy?: string | null;
   createdAt: string;
   updatedAt?: string;

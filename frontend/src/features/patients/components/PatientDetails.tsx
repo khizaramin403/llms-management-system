@@ -34,8 +34,10 @@ import {
 } from "@/components/ui/breadcrumb";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { RoleBadge } from "@/components/shared/RoleBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { can } from "@/constants/permissions";
+import { type Role } from "@/constants/roles";
 import { useAuthStore } from "@/stores/auth.store";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -296,10 +298,15 @@ export function PatientDetails({ patientId: propPatientId }: PatientDetailsProps
   };
 
   const age = calculateAge(patient.dateOfBirth);
-  const registeredBy =
+  const registeredByObj =
     typeof patient.createdBy === "object" && patient.createdBy !== null
-      ? (patient.createdBy as { name?: string }).name || "—"
-      : patient.createdBy || "—";
+      ? (patient.createdBy as { name?: string; role?: string })
+      : null;
+
+  const registeredByName =
+    registeredByObj?.name ||
+    (typeof patient.createdBy === "string" ? patient.createdBy : "—");
+  const registeredByRole = registeredByObj?.role || null;
 
   return (
     <div className="space-y-6">
@@ -438,12 +445,17 @@ export function PatientDetails({ patientId: propPatientId }: PatientDetailsProps
                 Registered by
               </p>
               <div className="flex items-center gap-2">
-                {registeredBy !== "—" && (
-                  <UserAvatar name={registeredBy} size="sm" />
+                {registeredByName !== "—" && (
+                  <UserAvatar name={registeredByName} size="sm" />
                 )}
-                <p className="text-sm font-medium text-foreground">
-                  {registeredBy}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium text-foreground">
+                    {registeredByName}
+                  </p>
+                  {registeredByRole && (
+                    <RoleBadge role={registeredByRole as Role} />
+                  )}
+                </div>
               </div>
             </div>
 
