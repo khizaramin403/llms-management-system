@@ -127,9 +127,9 @@ export function AuthGate({ children }: AuthGateProps) {
     return <AuthGateSkeleton />;
   }
 
-  // If error occurred or unauthenticated, render nothing while redirecting
+  // If error occurred or unauthenticated, render skeleton while redirecting
   if (isError || (!user && !isLoading)) {
-    return null;
+    return <AuthGateSkeleton />;
   }
 
   return <>{children}</>;

@@ -64,10 +64,10 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
 
     loginMutation.mutate(payload, {
       onSuccess: (data) => {
+        setIsRedirecting(true);
         if (onSuccess) {
           onSuccess(data.user);
         } else {
-          setIsRedirecting(true);
           setUser(data.user);
           toast.success(`Welcome back, ${data.user.name}`);
           router.push("/dashboard");

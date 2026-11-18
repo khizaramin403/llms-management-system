@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AuthGate } from "@/features/auth/components/AuthGate";
+import { NavigationProgressBar } from "@/components/layout/NavigationProgressBar";
 
 /**
  * Re-render reasoning:
@@ -21,6 +23,9 @@ export default async function DashboardLayout({
 
   return (
     <AuthGate>
+      <Suspense fallback={null}>
+        <NavigationProgressBar />
+      </Suspense>
       <SidebarProvider
         defaultOpen={defaultOpen}
         className="h-svh max-h-svh w-full overflow-hidden"

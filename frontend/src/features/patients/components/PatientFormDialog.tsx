@@ -263,6 +263,7 @@ function PatientFormContent({
                       <Input
                         placeholder="e.g. John Doe"
                         autoComplete="off"
+                        disabled={isPending}
                         {...field}
                       />
                     </FormControl>
@@ -280,18 +281,19 @@ function PatientFormContent({
                 <FormItem>
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                      <Input
-                        type="tel"
-                        placeholder="e.g. 03001234567"
-                        autoComplete="off"
-                        {...field}
-                        onChange={(e) => {
-                          // Sirf 0 se 9 tak ke digits allow karega
-                          const onlyNumbers = e.target.value.replace(/\D/g, "");
-                          field.onChange(onlyNumbers);
-                        }}
-                      />
-                    </FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="e.g. 03001234567"
+                      autoComplete="off"
+                      disabled={isPending}
+                      {...field}
+                      onChange={(e) => {
+                        // Sirf 0 se 9 tak ke digits allow karega
+                        const onlyNumbers = e.target.value.replace(/\D/g, "");
+                        field.onChange(onlyNumbers);
+                      }}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -307,6 +309,7 @@ function PatientFormContent({
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
+                    disabled={isPending}
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
@@ -335,6 +338,7 @@ function PatientFormContent({
                     <Input
                       type="date"
                       max={todayDateString}
+                      disabled={isPending}
                       {...field}
                       onChange={(e) => {
                         field.onChange(e);
@@ -356,11 +360,13 @@ function PatientFormContent({
                   inputMode="numeric"
                   placeholder="e.g. 25"
                   value={ageValue}
+                  disabled={isPending}
                   onChange={(e) => handleAgeValueChange(e.target.value)}
                   className="w-24 text-center font-medium"
                 />
                 <Select
                   value={ageUnit}
+                  disabled={isPending}
                   onValueChange={(val) => {
                     if (val) handleAgeUnitChange(val as "years" | "months" | "days");
                   }}
@@ -394,6 +400,7 @@ function PatientFormContent({
                       <Input
                         placeholder="Street address, city, region"
                         autoComplete="off"
+                        disabled={isPending}
                         {...field}
                       />
                     </FormControl>
@@ -413,9 +420,15 @@ function PatientFormContent({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending && <Spinner className="mr-2 size-4" />}
-              {isEditing ? "Save Changes" : "Register Patient"}
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="gap-2 cursor-pointer"
+            >
+              {isPending && <Spinner className="size-4 animate-spin text-current" />}
+              {isPending
+                ? (isEditing ? "Saving changes..." : "Registering patient...")
+                : (isEditing ? "Save Changes" : "Register Patient")}
             </Button>
           </DialogFooter>
         </form>
